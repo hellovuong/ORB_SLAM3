@@ -25,7 +25,7 @@
 #include "KeyFrame.h"
 #include "LoopClosing.h"
 #include "Frame.h"
-
+#include "EdgeSE2XYZ.h"
 #include <math.h>
 
 #include "Thirdparty/g2o/g2o/types/types_seven_dof_expmap.h"
@@ -46,7 +46,20 @@ class LoopClosing;
 class Optimizer
 {
 public:
+    // SE2 Optimization Functions // OUR
+    void static BundleAdjustmentSE2(const std::vector<KeyFrame*> &vpKF, const std::vector<MapPoint*> &vpMP,
+                                    int nIterations = 5, bool *pbStopFlag=NULL, const unsigned long nLoopKF=0,
+                                    const bool bRobust = true);
 
+    void static GlobalBundleAdjustemntSE2(Map* pMap, int nIterations=5, bool *pbStopFlag=NULL,
+                                       const unsigned long nLoopKF=0, const bool bRobust = true);
+    
+    void static LocalBundleAdjustmentSE2(KeyFrame* pKF, bool *pbStopFlag, Map *pMap, int& num_fixedKF);
+    void static LocalBundleAdjustmentSE2_odom(KeyFrame* pKF, bool *pbStopFlag, Map *pMap, int& num_fixedKF);
+    
+    int static PoseOptimizationSE2(Frame* pFrame);    
+
+    // SE3 Optimization Functions
     void static BundleAdjustment(const std::vector<KeyFrame*> &vpKF, const std::vector<MapPoint*> &vpMP,
                                  int nIterations = 5, bool *pbStopFlag=NULL, const unsigned long nLoopKF=0,
                                  const bool bRobust = true);
@@ -56,7 +69,7 @@ public:
 
     void static LocalBundleAdjustment(KeyFrame* pKF, bool *pbStopFlag, vector<KeyFrame*> &vpNonEnoughOptKFs);
     void static LocalBundleAdjustment(KeyFrame* pKF, bool *pbStopFlag, Map *pMap, int& num_fixedKF);
-
+    
     void static MergeBundleAdjustmentVisual(KeyFrame* pCurrentKF, vector<KeyFrame*> vpWeldingKFs, vector<KeyFrame*> vpFixedKFs, bool *pbStopFlag);
 
     int static PoseOptimization(Frame* pFrame);

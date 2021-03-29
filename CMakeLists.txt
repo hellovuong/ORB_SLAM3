@@ -9,8 +9,8 @@ MESSAGE("Build type: " ${CMAKE_BUILD_TYPE})
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}  -Wall   -O3")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall   -O3")
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -march=native")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ")
 
 # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-deprecated -O3 -march=native ")
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-deprecated -O3 -march=native")
@@ -84,6 +84,7 @@ src/CameraModels/Pinhole.cpp
 src/CameraModels/KannalaBrandt8.cpp
 src/OptimizableTypes.cpp
 src/MLPnPsolver.cpp
+src/EdgeSE2XYZ.cpp
 include/System.h
 include/Tracking.h
 include/LocalMapping.h
@@ -112,6 +113,7 @@ include/CameraModels/KannalaBrandt8.h
 include/OptimizableTypes.h
 include/MLPnPsolver.h
 include/TwoViewReconstruction.h
+include/EdgeSE2XYZ.h
 src/TwoViewReconstruction.cc)
 
 add_subdirectory(Thirdparty/g2o)
@@ -168,6 +170,23 @@ add_executable(mono_tum_vi
 Examples/Monocular/mono_tum_vi.cc)
 target_link_libraries(mono_tum_vi ${PROJECT_NAME})
 
+add_executable(mono_openloris
+Examples/Monocular/mono_openloris.cc)
+target_link_libraries(mono_openloris ${PROJECT_NAME})
+
+add_executable(mono_sber
+Examples/Monocular/mono_sber.cc)
+target_link_libraries(mono_sber ${PROJECT_NAME})
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Monocular-Odom)
+
+add_executable(mono_odom
+Examples/Monocular-Odom/mono_odom.cc)
+target_link_libraries(mono_odom ${PROJECT_NAME})
+
+add_executable(mono_odom_sber
+Examples/Monocular-Odom/mono_odom_sber.cc)
+target_link_libraries(mono_odom_sber ${PROJECT_NAME})
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Monocular-Inertial)
 
@@ -179,6 +198,9 @@ add_executable(mono_inertial_tum_vi
 Examples/Monocular-Inertial/mono_inertial_tum_vi.cc)
 target_link_libraries(mono_inertial_tum_vi ${PROJECT_NAME})
 
+add_executable(mono_inertial_openloris
+Examples/Monocular-Inertial/mono_inertial_openloris.cc)
+target_link_libraries(mono_inertial_openloris ${PROJECT_NAME})
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Stereo-Inertial)
 

@@ -22,6 +22,7 @@
 #include "ImuTypes.h"
 #include<mutex>
 
+#define ODOM
 namespace ORB_SLAM3
 {
 
@@ -64,7 +65,15 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
     mvLeftToRightMatch(F.mvLeftToRightMatch),mvRightToLeftMatch(F.mvRightToLeftMatch),mTlr(F.mTlr.clone()),
     mvKeysRight(F.mvKeysRight), NLeft(F.Nleft), NRight(F.Nright), mTrl(F.mTrl), mnNumberOfOpt(0)
 {
+    // OUR
+#ifdef ODOM
+        KeyFrame* pKf = NULL;
+        odomFromThis = make_pair(pKf, PreSE2());
+        odomToThis = make_pair(pKf, PreSE2());
 
+        odom = F.odom;
+        F.Tbc.copyTo(Tbc);
+#endif
     imgLeft = F.imgLeft.clone();
     imgRight = F.imgRight.clone();
 
@@ -125,6 +134,13 @@ void KeyFrame::SetPose(const cv::Mat &Tcw_)
     Ow.copyTo(Twc.rowRange(0,3).col(3));
     cv::Mat center = (cv::Mat_<float>(4,1) << mHalfBaseline, 0 , 0, 1);
     Cw = Twc*center;
+}
+
+void KeyFrame::SetPoseByOdomTo(KeyFrame *refKF)
+{
+    g2o::SE2 dOdom = refKF->odom - odom;
+    cv::Mat dCvOdom = Tbc.inv() * dOdom.toCvSE3() * Tbc;
+    SetPose(dCvOdom * refKF->GetPose());
 }
 
 void KeyFrame::SetVelocity(const cv::Mat &Vw_)
@@ -420,9 +436,19 @@ void KeyFrame::UpdateConnections(bool upParent)
     }
 
     // This should not happen
-    if(KFcounter.empty())
-        return;
-
+    if(KFcounter.empty()) {
+        std::cout<<"This should not happen"<<std::endl;
+        return; // SE2_EDIT
+    }    
+    
+    // OUR 
+    // SE2_EDIT
+#ifdef ODOM
+    mpLastKF = mpMap->GetLastestKeyFrameIdLessThan(mnId);
+    if(mnId != 0 && !KFcounter.count(mpLastKF)) {
+        KFcounter[mpLastKF] = 0;
+    }
+#endif
     //If the counter is greater than threshold add connection
     //In case no keyframe counter is over threshold add the one with maximum counter
     int nmax=0;
@@ -442,7 +468,12 @@ void KeyFrame::UpdateConnections(bool upParent)
             nmax=mit->second;
             pKFmax=mit->first;
         }
-        if(mit->second>=th)
+        bool temp = false;
+#ifdef ODOM
+        if(mpLastKF)
+            temp = mit->first->mnId == mpLastKF->mnId;
+#endif
+        if(mit->second>=th || temp)
         {
             vPairs.push_back(make_pair(mit->second,mit->first));
             (mit->first)->AddConnection(this,mit->second);
@@ -451,8 +482,13 @@ void KeyFrame::UpdateConnections(bool upParent)
 
     if(vPairs.empty())
     {
-        vPairs.push_back(make_pair(nmax,pKFmax));
-        pKFmax->AddConnection(this,nmax);
+#ifdef ODOM
+        if(pKFmax)
+#endif
+        {
+            vPairs.push_back(make_pair(nmax,pKFmax));
+            pKFmax->AddConnection(this,nmax);
+        }
     }
 
     sort(vPairs.begin(),vPairs.end());
@@ -635,7 +671,18 @@ void KeyFrame::SetBadFlag()
 
     for(map<KeyFrame*,int>::iterator mit = mConnectedKeyFrameWeights.begin(), mend=mConnectedKeyFrameWeights.end(); mit!=mend; mit++)
     {
-        mit->first->EraseConnection(this);
+        KeyFrame* other = mit->first;
+        other->EraseConnection(this);
+#ifdef ODOM
+        if(other->mnId == 0)
+            continue;
+        if(other->mpLastKF->mnId == mnId)
+        {
+            other->mpLastKF = mpLastKF;
+            other->AddConnection(mpLastKF, other->GetWeight(mpLastKF));
+            mpLastKF->AddConnection(other, mpLastKF->GetWeight(other));
+        }
+#endif
     }
     //std::cout << "KF.BADFLAG-> Connection erased..." << std::endl;
 

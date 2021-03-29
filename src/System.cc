@@ -63,7 +63,8 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
         cout << "Monocular-Inertial" << endl;
     else if(mSensor==IMU_STEREO)
         cout << "Stereo-Inertial" << endl;
-
+    else if(mSensor==ODOM_MONOCULAR)
+        cout << "Monocular-Odometry" << endl;
     //Check settings file
     cv::FileStorage fsSettings(strSettingsFile.c_str(), cv::FileStorage::READ);
     if(!fsSettings.isOpened())
@@ -177,7 +178,7 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
                              mpAtlas, mpKeyFrameDatabase, strSettingsFile, mSensor, strSequence);
 
     //Initialize the Local Mapping thread and launch
-    mpLocalMapper = new LocalMapping(this, mpAtlas, mSensor==MONOCULAR || mSensor==IMU_MONOCULAR, mSensor==IMU_MONOCULAR || mSensor==IMU_STEREO, strSequence);
+    mpLocalMapper = new LocalMapping(this, mpAtlas, mSensor==MONOCULAR || mSensor==IMU_MONOCULAR || mSensor == ODOM_MONOCULAR, mSensor==IMU_MONOCULAR || mSensor==IMU_STEREO, mSensor == ODOM_MONOCULAR, strSequence);
     mptLocalMapping = new thread(&ORB_SLAM3::LocalMapping::Run,mpLocalMapper);
     mpLocalMapper->mInitFr = initFr;
     mpLocalMapper->mThFarPoints = fsSettings["thFarPoints"];
@@ -406,7 +407,47 @@ cv::Mat System::TrackMonocular(const cv::Mat &im, const double &timestamp, const
     return Tcw;
 }
 
+cv::Mat System::TrackOdomMono(const cv::Mat &im, const g2o::SE2 &odo, const double timestamp, string filename)
+{
+    if(mSensor!=ODOM_MONOCULAR)
+    {
+        cerr << "ERROR: you called TrackOdomMono but input sensor was not set to ODOM_Monocular." << endl;
+        exit(-1);
+    }
 
+    // Check mode change
+    {
+        unique_lock<mutex> lock(mMutexMode);
+        if(mbActivateLocalizationMode)
+        {
+            mpLocalMapper->RequestStop();
+
+            // Wait until Local Mapping has effectively stopped
+            while(!mpLocalMapper->isStopped())
+            {
+                usleep(1000);
+            }
+
+            mpTracker->InformOnlyTracking(true);
+            mbActivateLocalizationMode = false;
+        }
+        if(mbDeactivateLocalizationMode)
+        {
+            mpTracker->InformOnlyTracking(false);
+            mpLocalMapper->Release();
+            mbDeactivateLocalizationMode = false;
+        }
+    }
+
+    cv::Mat Tcw = mpTracker->GrabImageOdomMono(im, odo, timestamp, filename);
+
+    unique_lock<mutex> lock2(mMutexState);
+    mTrackingState = mpTracker->mState;
+    mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
+    mTrackedKeyPointsUn = mpTracker->mCurrentFrame.mvKeysUn;
+
+    return Tcw;
+}
 
 void System::ActivateLocalizationMode()
 {
@@ -568,6 +609,39 @@ void System::SaveKeyFrameTrajectoryTUM(const string &filename)
     }
 
     f.close();
+}
+
+void System::SavePoseKeyFrameTrajectoryTUM(const string &filename)
+{
+    cout << endl << "Saving keyframe trajectory to " << filename << " ..." << endl;
+    vector<KeyFrame*> vpKFs = mpAtlas->GetAllKeyFrames();
+    sort(vpKFs.begin(),vpKFs.end(),KeyFrame::lId);
+
+    // Transform all keyframes so that the first keyframe is at the origin.
+    // After a loop closure the first keyframe might not be at the origin.
+    ofstream f;
+    f.open(filename.c_str());
+    f << fixed;
+
+    for(size_t i=0; i<vpKFs.size(); i++)
+    {
+        KeyFrame* pKF = vpKFs[i];
+        cv::Mat Tbc = pKF->Tbc;
+       // pKF->SetPose(pKF->GetPose()*Two);
+
+        if(pKF->isBad())
+            continue;
+        cv::Mat Tw0b = Tbc * ((Tbc * pKF->GetPose()).inv()) ; // Twb = Twc*Tcb & Tw0b = Tcb * Twb    : w is world in Cam system, w0 is world in Body system
+        cv::Mat R = Tw0b.rowRange(0,3).colRange(0,3);
+        vector<float> q = Converter::toQuaternion(R);
+        cv::Mat t = Tw0b.rowRange(0,3).col(3);
+        f << setprecision(6) << pKF->mTimeStamp << setprecision(7) << " " << t.at<float>(0) << " " << t.at<float>(1) << " " << t.at<float>(2)
+            << " " << q[0] << " " << q[1] << " " << q[2] << " " << q[3] << endl;
+
+    }
+
+    f.close();
+    cout << endl << "trajectory saved!" << endl;
 }
 
 void System::SaveTrajectoryEuRoC(const string &filename)
@@ -913,6 +987,11 @@ void System::ChangeDataset()
     }
 
     mpTracker->NewDataset();
+}
+
+int System::GetSensor()
+{
+    return mSensor;
 }
 
 /*void System::SaveAtlas(int type){

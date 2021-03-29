@@ -87,7 +87,8 @@ public:
         STEREO=1,
         RGBD=2,
         IMU_MONOCULAR=3,
-        IMU_STEREO=4
+        IMU_STEREO=4, 
+        ODOM_MONOCULAR=5
     };
 
     // File type
@@ -117,6 +118,7 @@ public:
     // Returns the camera pose (empty if tracking fails).
     cv::Mat TrackMonocular(const cv::Mat &im, const double &timestamp, const vector<IMU::Point>& vImuMeas = vector<IMU::Point>(), string filename="");
 
+    cv::Mat TrackOdomMono(const cv::Mat &im, const g2o::SE2 &odo, const double timestamp, string filename=""); // OUR
 
     // This stops local mapping thread (map building) and performs only camera tracking.
     void ActivateLocalizationMode();
@@ -147,6 +149,7 @@ public:
     // Call first Shutdown()
     // See format details at: http://vision.in.tum.de/data/datasets/rgbd-dataset
     void SaveKeyFrameTrajectoryTUM(const string &filename);
+    void SavePoseKeyFrameTrajectoryTUM(const string &filename); //  OUR
 
     void SaveTrajectoryEuRoC(const string &filename);
     void SaveKeyFrameTrajectoryEuRoC(const string &filename);
@@ -178,7 +181,7 @@ public:
     void ChangeDataset();
 
     //void SaveAtlas(int type);
-
+    int GetSensor();
 private:
 
     //bool LoadAtlas(string filename, int type);

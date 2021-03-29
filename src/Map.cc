@@ -31,6 +31,8 @@ mbFail(false), mIsInUse(false), mHasTumbnail(false), mbBad(false), mnMapChangeNo
 {
     mnId=nNextId++;
     mThumbnail = static_cast<GLubyte*>(NULL);
+    newestChangedKeyFrameId = 0;
+    newestChangedEssentialId = 0;
 }
 
 Map::Map(int initKFid):mnInitKFid(initKFid), mnMaxKFid(initKFid),mnLastLoopKFid(initKFid), mnBigChangeIdx(0), mIsInUse(false),
@@ -39,6 +41,8 @@ Map::Map(int initKFid):mnInitKFid(initKFid), mnMaxKFid(initKFid),mnLastLoopKFid(
 {
     mnId=nNextId++;
     mThumbnail = static_cast<GLubyte*>(NULL);
+    newestChangedKeyFrameId = 0;
+    newestChangedEssentialId = 0;
 }
 
 Map::~Map()
@@ -638,5 +642,51 @@ void Map::PostLoad(KeyFrameDatabase* pKFDB, ORBVocabulary* pORBVoc, map<long uns
     mvpBackupMapPoints.clear();
 }
 
+std::vector<KeyFrame*> Map::GetKeyFramesIdNoLesserThan(int minId)
+{
+    unique_lock<mutex> lock(mMutexMap);
+    std::vector<KeyFrame*> vKfs;
+    for(auto crit = mspKeyFrames.crbegin(); crit != mspKeyFrames.crend(); crit++)
+    {
+        KeyFrame* kf = *crit;
+        if((int)(kf->mnId) >= minId)
+        {
+            vKfs.push_back(kf);
+        } else
+        {
+            break;
+        }
+    }
+    std::sort(vKfs.begin(), vKfs.end(), KeyFrame::lId);
+    return vKfs;
+}
+
+KeyFrame* Map::GetKeyFrameById(int id)
+{
+    unique_lock<mutex> lock(mMutexMap);
+    for(auto crit = mspKeyFrames.crbegin(); crit != mspKeyFrames.crend(); crit++)
+    {
+        KeyFrame* kf = *crit;
+        if((int)(kf->mnId) == id)
+        {
+            return kf;
+        }
+    }
+    return static_cast<KeyFrame*>(nullptr);
+}
+
+KeyFrame* Map::GetLastestKeyFrameIdLessThan(long unsigned int id)
+{
+    unique_lock<mutex> lock(mMutexMap);
+    for(auto crit = mspKeyFrames.crbegin(); crit != mspKeyFrames.crend(); crit++)
+    {
+        KeyFrame* kf = *crit;
+        if(kf->mnId < id)
+        {
+            return kf;
+        }
+    }
+    return static_cast<KeyFrame*>(nullptr);
+}
 
 } //namespace ORB_SLAM3

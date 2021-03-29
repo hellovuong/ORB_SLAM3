@@ -32,6 +32,7 @@
 #include "GeometricCamera.h"
 
 #include <mutex>
+#include <memory>
 
 #include <boost/serialization/base_object.hpp>
 #include <boost/serialization/vector.hpp>
@@ -388,7 +389,11 @@ public:
 
     // The following variables are accesed from only 1 thread or never change (no mutex needed).
 public:
-
+    std::vector<g2o::SE2> odom_LastKF;         // OUR
+    std::pair<KeyFrame*, PreSE2> odomToThis;// OUR
+    std::pair<KeyFrame*, PreSE2> odomFromThis;// OUR
+    g2o::SE2 odom;// OUR
+    cv::Mat Tbc;// OUR
     static long unsigned int nNextId;
     long unsigned int mnId;
     const long unsigned int mnFrameId;
@@ -487,6 +492,9 @@ public:
     const int mnMaxY;
     const cv::Mat mK;
 
+    KeyFrame* mpLastKF;
+    void SetPoseByOdomTo(KeyFrame* refKF); // OUR
+    
     // Preintegrated IMU measurements from previous keyframe
     KeyFrame* mPrevKF;
     KeyFrame* mNextKF;

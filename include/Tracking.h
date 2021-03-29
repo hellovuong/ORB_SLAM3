@@ -66,12 +66,14 @@ public:
     bool ParseCamParamFile(cv::FileStorage &fSettings);
     bool ParseORBParamFile(cv::FileStorage &fSettings);
     bool ParseIMUParamFile(cv::FileStorage &fSettings);
+    bool ParasOdomParaFile(cv::FileStorage &fSettings); // OUR
 
     // Preprocess the input and call Track(). Extract features and performs stereo matching.
     cv::Mat GrabImageStereo(const cv::Mat &imRectLeft,const cv::Mat &imRectRight, const double &timestamp, string filename);
     cv::Mat GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const double &timestamp, string filename);
     cv::Mat GrabImageMonocular(const cv::Mat &im, const double &timestamp, string filename);
     // cv::Mat GrabImageImuMonocular(const cv::Mat &im, const double &timestamp);
+    cv::Mat GrabImageOdomMono(const cv::Mat &im, const g2o::SE2 &odo, const double timestamp, string filename); // OUR
 
     void GrabImuData(const IMU::Point &imuMeasurement);
 
@@ -176,6 +178,7 @@ protected:
 
     // Map initialization for monocular
     void MonocularInitialization();
+    void MonocularOdomInitialization(); // OUR
     void CreateNewMapPoints();
     cv::Mat ComputeF12(KeyFrame *&pKF1, KeyFrame *&pKF2);
     void CreateInitialMapMonocular();
@@ -185,6 +188,11 @@ protected:
     void UpdateLastFrame();
     bool TrackWithMotionModel();
     bool PredictStateIMU();
+
+    void PreintegrateOdom();               //OUR
+    bool TrackWithMotionModelOdom();//OUR
+    bool TrackReferenceKeyFrameOdom();//OUR
+    int lastNewestChangedKeyFrameId = 0;//OUR
 
     bool Relocalization();
 
@@ -264,6 +272,15 @@ protected:
 
     //Atlas
     Atlas* mpAtlas;
+    
+    // Camera Extrinsics
+    cv::Mat mTbc;
+    cv::Mat mTcb;
+    
+    //Odometry Noise
+    float odom_x_noise;
+    float odom_y_noise;
+    float odom_theta_noise;
 
     //Calibration matrix
     cv::Mat mK;
@@ -304,6 +321,7 @@ protected:
 
     //Motion Model
     cv::Mat mVelocity;
+    cv::Mat mVelocityOdom;
 
     //Color order (true RGB, false BGR, ignored if grayscale)
     bool mbRGB;
@@ -327,7 +345,9 @@ protected:
     int initID, lastID;
 
     cv::Mat mTlr;
-
+    
+    g2o::SE2 lastOdom;
+    PreSE2 preSE2;
 public:
     cv::Mat mImRight;
 };

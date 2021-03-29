@@ -54,8 +54,8 @@ IF(OPENMP_FOUND AND G2O_USE_OPENMP)
 ENDIF(OPENMP_FOUND AND G2O_USE_OPENMP)
 
 # Compiler specific options for gcc
-SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -march=native")
-SET(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -march=native")
+SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 ")
+SET(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 ")
 # SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 # SET(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3")
 
@@ -91,6 +91,7 @@ ${G2O_EIGEN3_INCLUDE})
 ADD_LIBRARY(g2o ${G2O_LIB_TYPE}
 #types
 g2o/types/types_sba.h
+g2o/types/g2o_types_slam2d_api.h
 g2o/types/types_six_dof_expmap.h
 g2o/types/types_sba.cpp
 g2o/types/types_six_dof_expmap.cpp
@@ -99,6 +100,10 @@ g2o/types/types_seven_dof_expmap.h
 g2o/types/se3quat.h
 g2o/types/se3_ops.h
 g2o/types/se3_ops.hpp
+g2o/types/se2.h
+g2o/types/vertex_se2.h
+g2o/types/vertex_se2.cpp
+
 #core
 g2o/core/base_edge.h
 g2o/core/base_binary_edge.h

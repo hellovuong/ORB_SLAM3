@@ -31,6 +31,33 @@ std::vector<cv::Mat> Converter::toDescriptorVector(const cv::Mat &Descriptors)
     return vDesc;
 }
 
+g2o::SE2 Converter::toSE2(const cv::Mat &cvT)
+{
+    double yaw = std::atan2(cvT.at<float>(1,0), cvT.at<float>(0,0)); // https://stackoverflow.com/questions/15022630/how-to-calculate-the-angle-from-rotation-matrix
+    double theta = Converter::normalize_angle(yaw);
+    double x = cvT.at<float>(0,3);
+    double y = cvT.at<float>(1,3);
+    Eigen::Matrix<double,3,1> pose_vec; 
+    pose_vec << x, y, theta;
+    g2o::SE2 pose(pose_vec);
+    return pose;
+}
+
+double Converter::normalize_angle(double theta)
+{
+    if (theta >= -M_PI && theta < M_PI)
+    return theta;
+
+    double multiplier = floor(theta / (2*M_PI));
+    theta = theta - multiplier*2*M_PI;
+    if (theta >= M_PI)
+        theta -= 2*M_PI;
+    if (theta < -M_PI)
+        theta += 2*M_PI;
+
+    return theta;
+}
+
 g2o::SE3Quat Converter::toSE3Quat(const cv::Mat &cvT)
 {
     Eigen::Matrix<double,3,3> R;
@@ -152,6 +179,18 @@ Eigen::Matrix<double,4,4> Converter::toMatrix4d(const cv::Mat &cvMat4)
     return M;
 }
 
+Eigen::Matrix3d Converter::skew(const Vector3d&v)
+{
+    Eigen::Matrix3d m;
+    m.fill(0.);
+    m(0,1)  = -v(2);
+    m(0,2)  =  v(1);
+    m(1,2)  = -v(0);
+    m(1,0)  =  v(2);
+    m(2,0) = -v(1);
+    m(2,1) = v(0);
+    return m;
+}
 
 std::vector<float> Converter::toQuaternion(const cv::Mat &M)
 {

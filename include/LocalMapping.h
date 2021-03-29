@@ -41,7 +41,7 @@ class Atlas;
 class LocalMapping
 {
 public:
-    LocalMapping(System* pSys, Atlas* pAtlas, const float bMonocular, bool bInertial, const string &_strSeqName=std::string());
+    LocalMapping(System* pSys, Atlas* pAtlas, const float bMonocular, bool bInertial, bool bOdom, const string &_strSeqName=std::string());
 
     void SetLoopCloser(LoopClosing* pLoopCloser);
 
@@ -127,7 +127,7 @@ protected:
 
     bool mbMonocular;
     bool mbInertial;
-
+    bool mbOdom;
     void ResetIfRequested();
     bool mbResetRequested;
     bool mbResetRequestedActiveMap;

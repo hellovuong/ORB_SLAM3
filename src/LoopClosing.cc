@@ -2474,7 +2474,7 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
             //pActiveMap->PrintEssentialGraph();
             // Correct keyframes starting at map first keyframe
             list<KeyFrame*> lpKFtoCheck(pActiveMap->mvpKeyFrameOrigins.begin(),pActiveMap->mvpKeyFrameOrigins.end());
-
+            int largestChangedId = 0;
             while(!lpKFtoCheck.empty())
             {
                 KeyFrame* pKF = lpKFtoCheck.front();
@@ -2589,8 +2589,14 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
                 }
 
                 lpKFtoCheck.pop_front();
+#ifdef ODOM
+                if((int)(pKF->mnId) > largestChangedId)
+                    largestChangedId = pKF->mnId;
+#endif
             }
-
+#ifdef ODOM
+            pActiveMap->newestChangedKeyFrameId = largestChangedId;
+#endif
             //cout << "GBA: Correct MapPoints" << endl;
             // Correct MapPoints
             const vector<MapPoint*> vpMPs = pActiveMap->GetAllMapPoints();

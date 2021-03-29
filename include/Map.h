@@ -26,6 +26,8 @@
 #include <set>
 #include <pangolin/pangolin.h>
 #include <mutex>
+#include <vector> 
+#include <atomic>
 
 #include <boost/serialization/base_object.hpp>
 
@@ -146,6 +148,12 @@ public:
 
     // This avoid that two points are created simultaneously in separate threads (id conflict)
     std::mutex mMutexPointCreation;
+
+    std::atomic_int newestChangedKeyFrameId;                      // OUR
+    std::atomic_int newestChangedEssentialId;// OUR
+    std::vector<KeyFrame*> GetKeyFramesIdNoLesserThan(int minId);// OUR
+    KeyFrame* GetLastestKeyFrameIdLessThan(unsigned long id);// OUR
+    KeyFrame* GetKeyFrameById(int id);// OUR
 
     bool mbFail;
 

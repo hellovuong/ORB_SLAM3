@@ -44,7 +44,12 @@ public:
     // Selects a model and tries to recover the motion and the structure from motion
     bool Initialize(const Frame &CurrentFrame, const vector<int> &vMatches12, cv::Mat &R21,
                     cv::Mat &t21, vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated);
+    bool InitializeWithOdom(const Frame &CurrentFrame, const vector<int> &vMatches12,
+                            cv::Mat &R21, cv::Mat &t21, vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated); // OUR
 
+    g2o::SE2 odom1; //OUR
+    g2o::SE2 odom2; // OUR
+    cv::Mat Tbc; // OUR
 private:
 
     void FindHomography(vector<bool> &vbMatchesInliers, float &score, cv::Mat &H21);
@@ -62,7 +67,8 @@ private:
 
     bool ReconstructH(vector<bool> &vbMatchesInliers, cv::Mat &H21, cv::Mat &K,
                       cv::Mat &R21, cv::Mat &t21, vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated, float minParallax, int minTriangulated);
-
+    bool ReconstructWithOdom(vector<bool> &vbMatchesInliers, cv::Mat &K,
+                      cv::Mat &R21, cv::Mat &t21, vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated, float minParallax, int minTriangulated); //OUR
     void Triangulate(const cv::KeyPoint &kp1, const cv::KeyPoint &kp2, const cv::Mat &P1, const cv::Mat &P2, cv::Mat &x3D);
 
     void Normalize(const vector<cv::KeyPoint> &vKeys, vector<cv::Point2f> &vNormalizedPoints, cv::Mat &T);

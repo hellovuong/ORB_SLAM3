@@ -26,6 +26,7 @@
 
 #include "Thirdparty/DBoW2/DBoW2/BowVector.h"
 #include "Thirdparty/DBoW2/DBoW2/FeatureVector.h"
+#include "Thirdparty/g2o/g2o/types/se2.h"
 
 #include "ImuTypes.h"
 #include "ORBVocabulary.h"
@@ -35,6 +36,18 @@
 
 namespace ORB_SLAM3
 {
+struct PreSE2
+{
+public:
+    double meas[3];
+    double cov[9]; // 3*3, RowMajor 
+    PreSE2(){
+        memset(meas,0,sizeof meas);
+        memset(cov,0,sizeof cov);
+    }
+    ~PreSE2(){}
+}; // OUR
+
 #define FRAME_GRID_ROWS 48
 #define FRAME_GRID_COLS 64
 
@@ -43,6 +56,7 @@ class KeyFrame;
 class ConstraintPoseImu;
 class GeometricCamera;
 class ORBextractor;
+class System;
 
 class Frame
 {
@@ -60,6 +74,9 @@ public:
 
     // Constructor for Monocular cameras.
     Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, GeometricCamera* pCamera, cv::Mat &distCoef, const float &bf, const float &thDepth, Frame* pPrevF = static_cast<Frame*>(NULL), const IMU::Calib &ImuCalib = IMU::Calib());
+
+    // Constructor for Odometry-Monocular
+    Frame(const cv::Mat &imGray, const g2o::SE2 &odo, const double timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &extParaBc, GeometricCamera* pCamera, cv::Mat &distCoef, const float &bf, const float &thDepth, Frame* pPrevF = static_cast<Frame*>(NULL), const IMU::Calib &ImuCalib = IMU::Calib()); // OUR
 
     // Destructor
     // ~Frame();
@@ -131,6 +148,13 @@ public:
     cv::Mat mRwc;
     cv::Mat mOw;
 public:
+    // Odometry measurement
+    g2o::SE2 odom; // OUR
+    //int mSensor;
+    // Extrinsic parameter
+    cv::Mat Tbc; //OUR
+    cv::Mat Tcb; //OUR
+    
     // Vocabulary used for relocalization.
     ORBVocabulary* mpORBvocabulary;
 

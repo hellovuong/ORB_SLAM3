@@ -25,6 +25,7 @@
 #include<Eigen/Dense>
 #include"Thirdparty/g2o/g2o/types/types_six_dof_expmap.h"
 #include"Thirdparty/g2o/g2o/types/types_seven_dof_expmap.h"
+#include"Thirdparty/g2o/g2o/types/se2.h"
 
 namespace ORB_SLAM3
 {
@@ -33,6 +34,9 @@ class Converter
 {
 public:
     static std::vector<cv::Mat> toDescriptorVector(const cv::Mat &Descriptors);
+
+    static g2o::SE2 toSE2(const cv::Mat &cvT); // OUR
+    static double normalize_angle(double theta); // OUR
 
     static g2o::SE3Quat toSE3Quat(const cv::Mat &cvT);
     static g2o::SE3Quat toSE3Quat(const g2o::Sim3 &gSim3);
@@ -51,6 +55,9 @@ public:
     static Eigen::Matrix<double,3,1> toVector3d(const cv::Point3f &cvPoint);
     static Eigen::Matrix<double,3,3> toMatrix3d(const cv::Mat &cvMat3);
     static Eigen::Matrix<double,4,4> toMatrix4d(const cv::Mat &cvMat4);
+
+    static Eigen::Matrix3d skew(const Vector3d&v);// OUR
+
     static std::vector<float> toQuaternion(const cv::Mat &M);
 
     static bool isRotationMatrix(const cv::Mat &R);
