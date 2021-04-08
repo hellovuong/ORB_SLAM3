@@ -214,6 +214,7 @@ int main(int argc, char *argv[])
         const string f_file =  "f_" + string(argv[argc-1]) + ".txt";
         SLAM.SaveTrajectoryEuRoC(f_file);
         SLAM.SaveKeyFrameTrajectoryEuRoC(kf_file);
+        SLAM.SaveTrajectoryTUM("f_TUM" + string(argv[argc-1]) + ".txt");
     }
     else
     {

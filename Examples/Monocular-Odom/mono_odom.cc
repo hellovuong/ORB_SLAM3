@@ -41,13 +41,14 @@ void LoadOdom(const string &strOdomPath, vector<double> &vTimeStamps, vector<g2o
 int main(int argc, char **argv)
 {
 
-
-
-    if(argc != 4)
+    bool bfilename = false;
+    if(argc < 4)
     {
-        cerr << endl << "Usage: ./mono_odom path_to_vocabulary path_to_settings path_to_sequence" << endl;
+        cerr << endl << "Usage: ./mono_odom path_to_vocabulary path_to_settings path_to_sequence (name_sequence)" << endl;
         return 1;
     }
+    if(argc == 5)
+        bfilename =true;
 
     string dataPath = argv[3];
     // Retrieve paths to images
@@ -137,9 +138,14 @@ int main(int argc, char **argv)
     cout << "-------" << endl << endl;
     cout << "median tracking time: " << vTimesTrack[nImages/2] << endl;
     cout << "mean tracking time: " << totaltime/nImages << endl;
-
+    
+    //SLAM.SavePoseKeyFrameTrajectoryTUM("KeyFrameTrajectory_body.txt");   
     // Save camera trajectory
-    SLAM.SavePoseKeyFrameTrajectoryTUM("KeyFrameTrajectory_body.txt");    
+    if(bfilename)
+        SLAM.SavePoseKeyFrameTrajectoryTUM("kf_body_" + string(argv[argc-1]) + ".txt"); 
+    else
+        SLAM.SavePoseKeyFrameTrajectoryTUM("KeyFrameTrajectory_cam.txt");
+    
     SLAM.SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory_cam.txt");
     return 0;
 }

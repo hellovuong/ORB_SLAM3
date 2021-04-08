@@ -40,13 +40,14 @@ int main(int argc, char **argv)
 {
 
 
-
-    if(argc != 4)
+    bool bfilename = false;
+    if(argc < 4)
     {
-        cerr << endl << "Usage: ./mono_odom path_to_vocabulary path_to_settings path_to_sequence" << endl;
+        cerr << endl << "Usage: ./mono_odom path_to_vocabulary path_to_settings path_to_sequence (name_sequence)" << endl;
         return 1;
     }
-
+    if(argc == 5)
+        bfilename =true;
     string dataPath = argv[3];
     // Retrieve paths to images
     vector<string> vstrImageFilenames;
@@ -132,8 +133,11 @@ int main(int argc, char **argv)
     cout << "mean tracking time: " << totaltime/nImages << endl;
 
     // Save camera trajectory
-    //SLAM.SavePoseKeyFrameTrajectoryTUM("KeyFrameTrajectory_body.txt");    
-    SLAM.SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory_cam.txt");
+    //SLAM.SavePoseKeyFrameTrajectoryTUM("KeyFrameTrajectory_body.txt");   
+    if(bfilename)
+        SLAM.SaveKeyFrameTrajectoryTUM("kf_" + string(argv[argc-1]) + ".txt"); 
+    else
+        SLAM.SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory_cam.txt");
     return 0;
 }
 
