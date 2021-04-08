@@ -1265,7 +1265,7 @@ void LocalMapping::InitializeIMU(float priorG, float priorA, bool bFIBA)
     const int N = vpKF.size();
     IMU::Bias b(0,0,0,0,0,0);
 
-    // Compute and KF velocities mRwg estimation
+    // Compute and KF velocities mRwg (angle) estimation -> SE2?
     if (!mpCurrentKeyFrame->GetMap()->isImuInitialized())
     {
         cv::Mat cvRwg;
@@ -1309,6 +1309,14 @@ void LocalMapping::InitializeIMU(float priorG, float priorA, bool bFIBA)
     Optimizer::InertialOptimization(mpAtlas->GetCurrentMap(), mRwg, mScale, mbg, mba, mbMonocular, infoInertial, false, false, priorG, priorA);
     std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
 
+    // TESTING RESULTS
+    std::cout<<"This is a summary about Values of Initilization:\n";
+    std::cout<<std::fixed<<std::setprecision(5);
+    std::cout<<"mRwg:\n"<<mRwg<<std::endl;
+    std::cout<<"gyro bias:\n"<<mbg<<std::endl;
+    std::cout<<"acc bias:\n"<<mba<<std::endl;
+    std::cout<<"scale:\n"<<mScale<<std::endl;
+
     /*cout << "scale after inertial-only optimization: " << mScale << endl;
     cout << "bg after inertial-only optimization: " << mbg << endl;
     cout << "ba after inertial-only optimization: " << mba << endl;*/
@@ -1321,6 +1329,13 @@ void LocalMapping::InitializeIMU(float priorG, float priorA, bool bFIBA)
         return;
     }
 
+    if(mbOdom){
+        if(mScale<0.9){
+        cout << "scale too small" << endl;
+        bInitializing=false;
+        return;
+        }
+    }
 
 
     // Before this line we are not changing the map

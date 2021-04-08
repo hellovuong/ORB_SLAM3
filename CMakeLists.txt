@@ -202,6 +202,15 @@ add_executable(mono_inertial_openloris
 Examples/Monocular-Inertial/mono_inertial_openloris.cc)
 target_link_libraries(mono_inertial_openloris ${PROJECT_NAME})
 
+add_executable(mono_inertial_sber
+Examples/Monocular-Inertial/mono_inertial_sber.cc)
+target_link_libraries(mono_inertial_sber ${PROJECT_NAME})
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Monocular-Inertial-Odom)
+add_executable(mono_inertial_odom_openloris
+Examples/Monocular-Inertial-Odom/mono_inertial_odom_openloris.cc)
+target_link_libraries(mono_inertial_odom_openloris ${PROJECT_NAME})
+
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Stereo-Inertial)
 
 add_executable(stereo_inertial_euroc

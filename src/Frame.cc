@@ -30,7 +30,7 @@
 #include <include/CameraModels/Pinhole.h>
 #include <include/CameraModels/KannalaBrandt8.h>
 
-//#define ODOM
+#define ODOM
 
 namespace ORB_SLAM3
 {
@@ -69,9 +69,10 @@ Frame::Frame(const Frame &frame)
      mTlr(frame.mTlr.clone()), mRlr(frame.mRlr.clone()), mtlr(frame.mtlr.clone()), mTrl(frame.mTrl.clone()), mTimeStereoMatch(frame.mTimeStereoMatch), mTimeORB_Ext(frame.mTimeORB_Ext)
 {
     // OUR
+#ifdef ODOM
     frame.Tbc.copyTo(Tbc);
     odom = frame.odom;
-
+#endif
     for(int i=0;i<FRAME_GRID_COLS;i++)
         for(int j=0; j<FRAME_GRID_ROWS; j++){
             mGrid[i][j]=frame.mGrid[i][j];
@@ -455,6 +456,19 @@ Frame::Frame(const cv::Mat &imGray, const g2o::SE2 &odo, const double timeStamp,
     monoRight = -1;
 
     AssignFeaturesToGrid();
+
+    // mVw = cv::Mat::zeros(3,1,CV_32F);
+    if(pPrevF)
+    {
+        if(!pPrevF->mVw.empty())
+            mVw = pPrevF->mVw.clone();
+    }
+    else
+    {
+        mVw = cv::Mat::zeros(3,1,CV_32F);
+    }
+
+    mpMutexImu = new std::mutex();
 }
 
 void Frame::AssignFeaturesToGrid()

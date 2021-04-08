@@ -88,7 +88,8 @@ public:
         RGBD=2,
         IMU_MONOCULAR=3,
         IMU_STEREO=4, 
-        ODOM_MONOCULAR=5
+        ODOM_MONOCULAR=5,
+        ODOM_IMU_MONOCULAR=6
     };
 
     // File type
@@ -116,7 +117,7 @@ public:
     // Proccess the given monocular frame and optionally imu data
     // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
     // Returns the camera pose (empty if tracking fails).
-    cv::Mat TrackMonocular(const cv::Mat &im, const double &timestamp, const vector<IMU::Point>& vImuMeas = vector<IMU::Point>(), string filename="");
+    cv::Mat TrackMonocular(const cv::Mat &im, const double &timestamp, const vector<IMU::Point>& vImuMeas = vector<IMU::Point>(),const g2o::SE2 &vodoMeas = g2o::SE2() , string filename="");
 
     cv::Mat TrackOdomMono(const cv::Mat &im, const g2o::SE2 &odo, const double timestamp, string filename=""); // OUR
 
@@ -143,7 +144,7 @@ public:
     // Call first Shutdown()
     // See format details at: http://vision.in.tum.de/data/datasets/rgbd-dataset
     void SaveTrajectoryTUM(const string &filename);
-
+    void SaveTrajectoryTUM_ns(const string &filename);
     // Save keyframe poses in the TUM RGB-D dataset format.
     // This method works for all sensor input.
     // Call first Shutdown()

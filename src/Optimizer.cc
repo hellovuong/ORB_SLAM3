@@ -285,7 +285,7 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
 
     //cout << "end inserting MPs" << endl;
     // Optimize!
-    optimizer.setVerbose(true);
+    optimizer.setVerbose(false);
     optimizer.initializeOptimization();
     optimizer.optimize(nIterations);
     Verbose::PrintMess("BA: End of the optimization", Verbose::VERBOSITY_NORMAL);
@@ -645,7 +645,7 @@ void Optimizer::FullInertialBA(Map *pMap, int its, const bool bFixLocal, const l
     g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
     solver->setUserLambdaInit(1e-5);
     optimizer.setAlgorithm(solver);
-    optimizer.setVerbose(false);
+    optimizer.setVerbose(true);
 
     if(pbStopFlag)
         optimizer.setForceStopFlag(pbStopFlag);
@@ -2207,7 +2207,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
     //cout << "LM-LBA: lambda init: " << solver->userLambdaInit() << endl;
 
     optimizer.setAlgorithm(solver);
-    optimizer.setVerbose(false);
+    optimizer.setVerbose(true);
 
     if(pbStopFlag)
         optimizer.setForceStopFlag(pbStopFlag);
@@ -6146,7 +6146,7 @@ void Optimizer::LocalInertialBA(KeyFrame *pKF, bool *pbStopFlag, Map *pMap, bool
     //cout << "Total map points: " << lLocalMapPoints.size() << endl;
     for(map<int,int>::iterator mit=mVisEdges.begin(), mend=mVisEdges.end(); mit!=mend; mit++)
     {
-        assert(mit->second>=3);
+        //assert(mit->second>=3);
     }
 
     optimizer.initializeOptimization();
@@ -6548,7 +6548,7 @@ void Optimizer::InertialOptimization(Map *pMap, Eigen::Matrix3d &Rwg, double &sc
     std::set<g2o::HyperGraph::Edge*> setEdges = optimizer.edges();
 
     std::cout << "start optimization" << std::endl;
-    optimizer.setVerbose(false);
+    optimizer.setVerbose(true);
     optimizer.initializeOptimization();
     optimizer.optimize(its);
 
@@ -6721,7 +6721,7 @@ void Optimizer::InertialOptimization(Map *pMap, Eigen::Vector3d &bg, Eigen::Vect
     }
 
     // Compute error for different scales
-    optimizer.setVerbose(false);
+    optimizer.setVerbose(true);
     optimizer.initializeOptimization();
     optimizer.optimize(its);
 
@@ -6882,7 +6882,7 @@ void Optimizer::InertialOptimization(vector<KeyFrame*> vpKFs, Eigen::Vector3d &b
     }
 
     // Compute error for different scales
-    optimizer.setVerbose(false);
+    optimizer.setVerbose(true);
     optimizer.initializeOptimization();
     optimizer.optimize(its);
 
@@ -7017,7 +7017,7 @@ void Optimizer::InertialOptimization(Map *pMap, Eigen::Matrix3d &Rwg, double &sc
     }
 
     // Compute error for different scales
-    optimizer.setVerbose(false);
+    optimizer.setVerbose(true);
     optimizer.initializeOptimization();
     optimizer.optimize(its);
 
