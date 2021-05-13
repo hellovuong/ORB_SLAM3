@@ -1,5 +1,10 @@
 # ORB-SLAM3
 Added Odom + Mono SLAM
+Usage Mono Odom:
+```
+./mono_odom path_to_vocabulary path_to_settings path_to_sequence (name_sequence)
+```
+Notice that you need to copy odom data file in folder `/Examples/Monocular-Odom/OpenLoris_Odom` to OpenLoris folder and change the name of odom file to `odom_interp.txt`
 ### V0.3: Beta version, 4 Sep 2020
 **Authors:** Carlos Campos, Richard Elvira, Juan J. Gómez Rodríguez, [José M. M. Montiel](http://webdiis.unizar.es/~josemari/), [Juan D. Tardos](http://webdiis.unizar.es/~jdtardos/).
 
