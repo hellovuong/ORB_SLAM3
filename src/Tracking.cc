@@ -1410,8 +1410,8 @@ bool Tracking::PredictStateIMU()
         const cv::Mat Vwb1 = mpLastKeyFrame->GetVelocity();
 
         //const cv::Mat Gz = (cv::Mat_<float>(3,1) << 0,0,-IMU::GRAVITY_VALUE);
-        std::cout << "Gravity in tracking key frame: " << std::endl;
-        std::cout << Gz << std::endl;
+        // std::cout << "Gravity in tracking key frame: " << std::endl;
+        // std::cout << Gz << std::endl;
         const float t12 = mpImuPreintegratedFromLastKF->dT;
 
         cv::Mat Rwb2 = IMU::NormalizeRotation(Rwb1*mpImuPreintegratedFromLastKF->GetDeltaRotation(mpLastKeyFrame->GetImuBias()));
