@@ -1302,11 +1302,13 @@ void LocalMapping::InitializeIMU(float priorG, float priorA, bool bFIBA)
     }
 
     mScale=1.0;
+    static Eigen::Vector3d GI(0,0,-9.815f); // in inertial coordinate system
+    // mRwg - Rotation between our world corrdinate system and inertial system
 
     mInitTime = mpTracker->mLastFrame.mTimeStamp-vpKF.front()->mTimeStamp;
 
     std::chrono::steady_clock::time_point t0 = std::chrono::steady_clock::now();
-    Optimizer::InertialOptimization(mpAtlas->GetCurrentMap(), mRwg, mScale, mbg, mba, mbMonocular, infoInertial, false, false, priorG, priorA);
+    Optimizer::InertialOptimization(mpAtlas->GetCurrentMap(), mRwg, GI, mScale, mbg, mba, mbMonocular, infoInertial, false, false, priorG, priorA);
     std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
 
     // TESTING RESULTS
@@ -1337,14 +1339,23 @@ void LocalMapping::InitializeIMU(float priorG, float priorA, bool bFIBA)
         }
     }
 
+    Eigen::Vector3d Gw = mRwg * GI;//Gravity in World coordinate system
+    GI = Gw;
+    std::cout<<"Gravity in Worlframe: \n"<<Gw<<std::endl;
+    const vector<KeyFrame*> vpKFs = mpAtlas->GetCurrentMap()->GetAllKeyFrames();
+     for(size_t i=0; i<vpKFs.size(); i++)
+    {
+        KeyFrame* pKFi = vpKFs[i];
+        vpKFs[i]->vGw = Gw;
+    }
 
     // Before this line we are not changing the map
 
     unique_lock<mutex> lock(mpAtlas->GetCurrentMap()->mMutexMapUpdate);
     std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
-    if ((fabs(mScale-1.f)>0.00001)||!mbMonocular)
+    //if ((fabs(mScale-1.f)>0.00001)||!mbMonocular)
     {
-        mpAtlas->GetCurrentMap()->ApplyScaledRotation(Converter::toCvMat(mRwg).t(),mScale,true);
+        //mpAtlas->GetCurrentMap()->ApplyScaledRotation(Converter::toCvMat(mRwg).t(),mScale,true);
         mpTracker->UpdateFrameIMU(mScale,vpKF[0]->GetImuBias(),mpCurrentKeyFrame);
     }
     std::chrono::steady_clock::time_point t3 = std::chrono::steady_clock::now();

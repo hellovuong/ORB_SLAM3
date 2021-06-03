@@ -771,6 +771,7 @@ void Optimizer::FullInertialBA(Map *pMap, int its, const bool bFixLocal, const l
                 }
 
                 EdgeInertial* ei = new EdgeInertial(pKFi->mpImuPreintegrated);
+                ei->g = pKFi->vGw;
                 ei->setVertex(0,dynamic_cast<g2o::OptimizableGraph::Vertex*>(VP1));
                 ei->setVertex(1,dynamic_cast<g2o::OptimizableGraph::Vertex*>(VV1));
                 ei->setVertex(2,dynamic_cast<g2o::OptimizableGraph::Vertex*>(VG1));
@@ -5923,7 +5924,7 @@ void Optimizer::LocalInertialBA(KeyFrame *pKF, bool *pbStopFlag, Map *pMap, bool
             }
 
             vei[i] = new EdgeInertial(pKFi->mpImuPreintegrated);
-
+            vei[i]->g = pKFi->vGw;
             vei[i]->setVertex(0,dynamic_cast<g2o::OptimizableGraph::Vertex*>(VP1));
             vei[i]->setVertex(1,dynamic_cast<g2o::OptimizableGraph::Vertex*>(VV1));
             vei[i]->setVertex(2,dynamic_cast<g2o::OptimizableGraph::Vertex*>(VG1));
@@ -6410,7 +6411,7 @@ Eigen::MatrixXd Optimizer::Sparsify(const Eigen::MatrixXd &H, const int &start1,
 }
 
 
-void Optimizer::InertialOptimization(Map *pMap, Eigen::Matrix3d &Rwg, double &scale, Eigen::Vector3d &bg, Eigen::Vector3d &ba, bool bMono, Eigen::MatrixXd  &covInertial, bool bFixedVel, bool bGauss, float priorG, float priorA)
+void Optimizer::InertialOptimization(Map *pMap, Eigen::Matrix3d &Rwg, Eigen::Vector3d Gw,double &scale, Eigen::Vector3d &bg, Eigen::Vector3d &ba, bool bMono, Eigen::MatrixXd  &covInertial, bool bFixedVel, bool bGauss, float priorG, float priorA)
 {
     Verbose::PrintMess("inertial optimization", Verbose::VERBOSITY_NORMAL);
     int its = 200; // Check number of iterations
@@ -6527,6 +6528,7 @@ void Optimizer::InertialOptimization(Map *pMap, Eigen::Matrix3d &Rwg, double &sc
                 continue;
             }
             EdgeInertialGS* ei = new EdgeInertialGS(pKFi->mpImuPreintegrated);
+            ei->gI = Gw;
             ei->setVertex(0,dynamic_cast<g2o::OptimizableGraph::Vertex*>(VP1));
             ei->setVertex(1,dynamic_cast<g2o::OptimizableGraph::Vertex*>(VV1));
             ei->setVertex(2,dynamic_cast<g2o::OptimizableGraph::Vertex*>(VG));
@@ -8778,7 +8780,7 @@ int Optimizer::PoseInertialOptimizationLastKeyFrame(Frame *pFrame, bool bRecInit
     optimizer.addVertex(VAk);
 
     EdgeInertial* ei = new EdgeInertial(pFrame->mpImuPreintegrated);
-
+    ei->g = pKF->vGw;
     ei->setVertex(0, VPk);
     ei->setVertex(1, VVk);
     ei->setVertex(2, VGk);
@@ -9175,6 +9177,7 @@ int Optimizer::PoseInertialOptimizationLastFrame(Frame *pFrame, bool bRecInit)
 
     EdgeInertial* ei = new EdgeInertial(pFrame->mpImuPreintegratedFrame);
 
+    ei->g = pFrame->vGw;
     ei->setVertex(0, VPk);
     ei->setVertex(1, VVk);
     ei->setVertex(2, VGk);

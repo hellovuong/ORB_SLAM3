@@ -1401,14 +1401,17 @@ bool Tracking::PredictStateIMU()
         Verbose::PrintMess("No last frame", Verbose::VERBOSITY_NORMAL);
         return false;
     }
-
+    const cv::Mat Gz = (cv::Mat_<float>(3,1) << mpLastKeyFrame->vGw.x(),mpLastKeyFrame->vGw.y(),mpLastKeyFrame->vGw.z());
+    mCurrentFrame.vGw = Eigen::Vector3d(mpLastKeyFrame->vGw);
     if(mbMapUpdated && mpLastKeyFrame)
     {
         const cv::Mat twb1 = mpLastKeyFrame->GetImuPosition();
         const cv::Mat Rwb1 = mpLastKeyFrame->GetImuRotation();
         const cv::Mat Vwb1 = mpLastKeyFrame->GetVelocity();
 
-        const cv::Mat Gz = (cv::Mat_<float>(3,1) << 0,0,-IMU::GRAVITY_VALUE);
+        //const cv::Mat Gz = (cv::Mat_<float>(3,1) << 0,0,-IMU::GRAVITY_VALUE);
+        std::cout << "Gravity in tracking key frame: " << std::endl;
+        std::cout << Gz << std::endl;
         const float t12 = mpImuPreintegratedFromLastKF->dT;
 
         cv::Mat Rwb2 = IMU::NormalizeRotation(Rwb1*mpImuPreintegratedFromLastKF->GetDeltaRotation(mpLastKeyFrame->GetImuBias()));
@@ -1427,7 +1430,9 @@ bool Tracking::PredictStateIMU()
         const cv::Mat twb1 = mLastFrame.GetImuPosition();
         const cv::Mat Rwb1 = mLastFrame.GetImuRotation();
         const cv::Mat Vwb1 = mLastFrame.mVw;
-        const cv::Mat Gz = (cv::Mat_<float>(3,1) << 0,0,-IMU::GRAVITY_VALUE);
+        //const cv::Mat Gz = (cv::Mat_<float>(3,1) << 0,0,-IMU::GRAVITY_VALUE);
+        // std::cout << "Gravity in tracking frame: " << std::endl;
+        // std::cout << Gz << std::endl;
         const float t12 = mCurrentFrame.mpImuPreintegratedFrame->dT;
 
         cv::Mat Rwb2 = IMU::NormalizeRotation(Rwb1*mCurrentFrame.mpImuPreintegratedFrame->GetDeltaRotation(mLastFrame.mImuBias));
@@ -1728,9 +1733,9 @@ void Tracking::Track()
                 }
                 else 
                 {
-                    //if(!((mVelocity.empty() && !pCurrentMap->isImuInitialized()) || mCurrentFrame.mnId<mnLastRelocFrameId+2))
-                    //   bOK = TrackWithMotionModel();
-                    
+                    if(!((mVelocity.empty() && !pCurrentMap->isImuInitialized()) || mCurrentFrame.mnId<mnLastRelocFrameId+2))
+                       bOK = TrackWithMotionModel();
+                    else
                     //if(!bOK)
                     {
                         mCurrentFrame.mpReferenceKF = mpReferenceKF;
@@ -3301,6 +3306,7 @@ void Tracking::CreateNewKeyFrame()
     mpReferenceKF = pKF;
     mCurrentFrame.mpReferenceKF = pKF;
 
+    
     if(mpLastKeyFrame)
     {
         pKF->mPrevKF = mpLastKeyFrame;
@@ -3308,9 +3314,10 @@ void Tracking::CreateNewKeyFrame()
     }
     else
         Verbose::PrintMess("No last KF in KF creation!!", Verbose::VERBOSITY_NORMAL);
-
+    if(mpAtlas->isImuInitialized() && mpLastKeyFrame)
+        pKF->vGw = pKF->mPrevKF->vGw;
     // Reset preintegration from last KF (Create new object)
-    if (mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO)
+    if (mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO || mSensor == System::ODOM_IMU_MONOCULAR)
     {
         mpImuPreintegratedFromLastKF = new IMU::Preintegrated(pKF->GetImuBias(),pKF->mImuCalib);
     }
@@ -4094,8 +4101,10 @@ void Tracking::UpdateFrameIMU(const float s, const IMU::Bias &b, KeyFrame* pCurr
 
     mLastFrame.SetNewBias(mLastBias);
     mCurrentFrame.SetNewBias(mLastBias);
+    mLastFrame.vGw = mpLastKeyFrame->vGw;
+    mCurrentFrame.vGw = mpLastKeyFrame->vGw;
+    cv::Mat Gz = (cv::Mat_<float>(3,1) << mpLastKeyFrame->vGw.x(),mpLastKeyFrame->vGw.y(),mpLastKeyFrame->vGw.z());
 
-    cv::Mat Gz = (cv::Mat_<float>(3,1) << 0, 0, -IMU::GRAVITY_VALUE);
 
     cv::Mat twb1;
     cv::Mat Rwb1;

@@ -698,7 +698,7 @@ EdgeInertial::EdgeInertial(IMU::Preintegrated *pInt):JRg(Converter::toMatrix3d(p
 {
     // This edge links 6 vertices
     resize(6);
-    g << 0, 0, -IMU::GRAVITY_VALUE;
+    //g << 0, 0, -IMU::GRAVITY_VALUE;
     cv::Mat cvInfo = pInt->C.rowRange(0,9).colRange(0,9).inv(cv::DECOMP_SVD);
     Matrix9d Info;
     for(int r=0;r<9;r++)
@@ -805,7 +805,7 @@ EdgeInertialGS::EdgeInertialGS(IMU::Preintegrated *pInt):JRg(Converter::toMatrix
 {
     // This edge links 8 vertices
     resize(8);
-    gI << 0, 0, -IMU::GRAVITY_VALUE;
+    //gI << 0, 0, -IMU::GRAVITY_VALUE;
     cv::Mat cvInfo = pInt->C.rowRange(0,9).colRange(0,9).inv(cv::DECOMP_SVD);
     Matrix9d Info;
     for(int r=0;r<9;r++)
@@ -869,8 +869,10 @@ void EdgeInertialGS::linearizeOplus()
     const Eigen::Matrix3d Rwb2 = VP2->estimate().Rwb;
     const Eigen::Matrix3d Rwg = VGDir->estimate().Rwg;
     Eigen::MatrixXd Gm = Eigen::MatrixXd::Zero(3,2);
-    Gm(0,1) = -IMU::GRAVITY_VALUE;
-    Gm(1,0) = IMU::GRAVITY_VALUE;
+    Gm = Skew(gI).block(0,0,3,2);
+    //std::cout << "Gm: " << std::endl << Gm << std::endl;
+    //Gm(0,1) = -IMU::GRAVITY_VALUE;
+    //Gm(1,0) = IMU::GRAVITY_VALUE;
     const double s = VS->estimate();
     const Eigen::MatrixXd dGdTheta = Rwg*Gm;
     const Eigen::Matrix3d dR = Converter::toMatrix3d(mpInt->GetDeltaRotation(b));

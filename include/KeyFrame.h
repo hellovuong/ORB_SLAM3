@@ -283,6 +283,9 @@ public:
     KeyFrame();
     KeyFrame(Frame &F, Map* pMap, KeyFrameDatabase* pKFDB);
 
+
+    
+
     // Pose functions
     void SetPose(const cv::Mat &Tcw);
     void SetVelocity(const cv::Mat &Vw_);
@@ -394,6 +397,7 @@ public:
     std::pair<KeyFrame*, PreSE2> odomFromThis;// OUR
     g2o::SE2 odom;// OUR
     cv::Mat Tbc;// OUR
+    Eigen::Vector3d vGw;
     static long unsigned int nNextId;
     long unsigned int mnId;
     const long unsigned int mnFrameId;

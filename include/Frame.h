@@ -154,7 +154,7 @@ public:
     // Extrinsic parameter
     cv::Mat Tbc; //OUR
     cv::Mat Tcb; //OUR
-    
+    Eigen::Vector3d vGw;
     // Vocabulary used for relocalization.
     ORBVocabulary* mpORBvocabulary;
 

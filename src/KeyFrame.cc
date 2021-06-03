@@ -41,7 +41,7 @@ KeyFrame::KeyFrame():
         mvInvLevelSigma2(0), mnMinX(0), mnMinY(0), mnMaxX(0),
         mnMaxY(0), /*mK(NULL),*/  mPrevKF(static_cast<KeyFrame*>(NULL)), mNextKF(static_cast<KeyFrame*>(NULL)), mbFirstConnection(true), mpParent(NULL), mbNotErase(false),
         mbToBeErased(false), mbBad(false), mHalfBaseline(0), mbCurrentPlaceRecognition(false), mbHasHessian(false), mnMergeCorrectedForKF(0),
-        NLeft(0),NRight(0), mnNumberOfOpt(0)
+        NLeft(0),NRight(0), mnNumberOfOpt(0),vGw(Eigen::Vector3d(0,0,-IMU::GRAVITY_VALUE))
 {
 
 }
@@ -66,6 +66,7 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
     mvKeysRight(F.mvKeysRight), NLeft(F.Nleft), NRight(F.Nright), mTrl(F.mTrl), mnNumberOfOpt(0)
 {
     // OUR
+    vGw = F.vGw;
 #ifdef ODOM
         KeyFrame* pKf = NULL;
         odomFromThis = make_pair(pKf, PreSE2());
