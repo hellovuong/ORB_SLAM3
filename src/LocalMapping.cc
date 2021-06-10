@@ -1338,7 +1338,19 @@ void LocalMapping::InitializeIMU(float priorG, float priorA, bool bFIBA)
         return;
         }
     }
+     for(vector<KeyFrame*>::iterator itKF = vpKF.begin(); itKF!=vpKF.end(); itKF++)
+    {
+        std::cout<<(*itKF)->mnId<<' ';
+        std::cout << "IMU Position: ";
+        std::cout<<(*itKF)->GetImuPosition() << endl;
+        std::cout << "Cam Pose: " << std::endl;
+        std::cout<<(*itKF)->GetPose() << endl;
+        std::cout<<(*itKF)->odom.translation().x()<<' ';
+        std::cout<<(*itKF)->odom.translation().y()<<' ';
+        std::cout<<std::endl;
 
+
+    }
     Eigen::Vector3d Gw = mRwg * GI;//Gravity in World coordinate system
     GI = Gw;
     std::cout<<"Gravity in Worlframe: \n"<<Gw<<std::endl;

@@ -466,6 +466,41 @@ void Optimizer::BundleAdjustmentSE2(const vector<KeyFrame *> &vpKFs, const vecto
             maxKFid=pKF->mnId;
     }
 
+    //Edges for Odometry
+
+    // for(size_t i=0; i<vpKFs.size(); i++)
+    // {
+    //     auto& pKFi = vpKFs[i];
+    //     if(pKFi->isBad())
+    //         continue;
+    //     auto& pKF1 = pKFi->odomFromThis.first;
+    //     if(!pKF1)
+    //         continue;
+    //     auto& meas = pKFi->odomFromThis.second;
+        
+    //     std::cout<<pKFi->mnId<<std::endl;
+    //     std::cout<<pKF1->mnId<<std::endl;
+    //     //auto it = std::find(lPtrLocalKFs.begin(), lPtrLocalKFs.end(), pKF1);
+    //     //if(it == lPtrLocalKFs.end())
+    //     //    continue;
+    //     //int id = ++maxKFid;
+    //     //int id1 = it - lPtrLocalKFs.begin();
+    //     {
+    //         Eigen::Map<Eigen::Matrix3d, RowMajor>info (meas.cov);
+    //         g2o::PreEdgeSE2* e = new g2o::PreEdgeSE2;
+    //         e->vertices()[0] = optimizer.vertex(pKFi->mnId);
+            
+    //         e->vertices()[1] = optimizer.vertex(pKF1->mnId);
+
+    //         if(!e->vertices()[0] || !e->vertices()[1])
+    //             continue;
+    //         e->setMeasurement(Eigen::Vector3d(meas.meas));
+    //         e->setInformation(info);
+    //         optimizer.addEdge(e);
+    //     }
+            
+    // }
+
     const float thHuber2D = sqrt(5.99);
 
     // Set MapPoint vertices
@@ -1406,6 +1441,25 @@ int Optimizer::PoseOptimizationSE2(Frame* pFrame)
     vSE2->setId(0);
     vSE2->setFixed(false);
     optimizer.addVertex(vSE2);
+
+    // Set Odom edge
+    g2o::PreEdgeSE2* e = new g2o::PreEdgeSE2;
+
+    auto& pKF1 = pFrame->mpLastKeyFrame->odomFromThis.first;
+    auto& meas = pFrame->mpLastKeyFrame->odomFromThis.second;
+    if(!pKF1)
+        return 0;
+    {
+        Eigen::Map<Eigen::Matrix3d, RowMajor>info (meas.cov);
+        g2o::PreEdgeSE2* e = new g2o::PreEdgeSE2;
+        e->vertices()[0] = optimizer.vertex(pFrame->mpLastKeyFrame->mnId);
+        
+        e->vertices()[1] = optimizer.vertex(pKF1->mnId);
+
+        e->setMeasurement(Eigen::Vector3d(meas.meas));
+        e->setInformation(info);
+        optimizer.addEdge(e);
+    }
 
     // Set MapPoint vertices 
     const int N = pFrame->N;

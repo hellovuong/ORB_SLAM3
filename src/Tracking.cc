@@ -1262,9 +1262,12 @@ void Tracking::PreintegrateOdom()
 
     Matrix3d Ak = Matrix3d::Identity();
     Matrix3d Bk = Matrix3d::Identity();
+    
     Ak.block<2,1>(0,2) = Phi_ik * Vector2d(-odork[1], odork[0]);
     Bk.block<2,2>(0,0) = Phi_ik;
+
     Eigen::Map<Matrix3d, RowMajor> Sigmak(preSE2.cov);
+
     Matrix3d Sigma_vk = Matrix3d::Identity();
     Sigma_vk(0,0) = (odom_x_noise * odom_x_noise);
     Sigma_vk(1,1) = (odom_y_noise * odom_y_noise);
@@ -1650,7 +1653,7 @@ void Tracking::Track()
     }
 
     if((mSensor == System::ODOM_MONOCULAR || mSensor == System::ODOM_IMU_MONOCULAR) && !mbCreatedMap) {
-        PreintegrateOdom();
+        PreintegrateOdom();// TODO_VJ: Add preintegration logic from last frame and last key frame.
     }
 
     mbCreatedMap = false;
@@ -1680,7 +1683,7 @@ void Tracking::Track()
         }
         else if(mSensor == System::ODOM_MONOCULAR || mSensor == System::ODOM_IMU_MONOCULAR)
         {
-            MonocularOdomInitialization();
+            MonocularOdomInitialization(); // (TODO): Check this initilization, compare with iner init
         }
 
         mpFrameDrawer->Update(this);
@@ -1733,14 +1736,29 @@ void Tracking::Track()
                 }
                 else 
                 {
-                    if(!((mVelocity.empty() && !pCurrentMap->isImuInitialized()) || mCurrentFrame.mnId<mnLastRelocFrameId+2))
-                       bOK = TrackWithMotionModel();
-                    else
-                    //if(!bOK)
-                    {
-                        mCurrentFrame.mpReferenceKF = mpReferenceKF;
-                        bOK = TrackWithMotionModelOdom();
-                    }
+                    //if(!((mVelocity.empty() && !pCurrentMap->isImuInitialized()) || mCurrentFrame.mnId<mnLastRelocFrameId+2)){
+                    //    bOK = TrackWithMotionModelOdom();
+                    //   // If inertial Tracking was not success, try Odom ( Inertial -> Odom -> Visual )
+                    //   // TODO_LATER: Later the order will not be fixed ( Inertial -> Odom -> Visual ).
+                    //   
+                    //    if(!bOK){
+                    //        bOK = TrackReferenceKeyFrameOdom();
+                    //        if(!bOK)
+                    //            bOK = TrackReferenceKeyFrame();
+                    //    }
+                    //}
+                    //else
+                    //{
+                    //    mCurrentFrame.mpReferenceKF = mpReferenceKF;
+                    //     bOK = TrackWithMotionModelOdom();
+                    //        if(!bOK)
+                    //            bOK = TrackReferenceKeyFrameOdom();
+                    //}
+                    bOK = TrackWithMotionModelOdom();
+                    if(pCurrentMap->isImuInitialized() && !bOK)
+                        bOK = TrackWithMotionModel();
+                    if (!bOK)
+                        bOK = TrackReferenceKeyFrame();
                 }
                 if (!bOK)
                 {
@@ -1769,7 +1787,7 @@ void Tracking::Track()
                         bOK = TrackReferenceKeyFrameOdom();
                         if(!bOK)
                             bOK = TrackWithMotionModelOdom();
-                        bOK = true;
+                        bOK = true;// TODO_LATER: LOST SITUATION
                     }
                 }
             }
@@ -1831,24 +1849,25 @@ void Tracking::Track()
                 else {
                     Verbose::PrintMess("Lost for a short time", Verbose::VERBOSITY_NORMAL);
                     mState = RECENTLY_LOST;
-                    bOK = TrackReferenceKeyFrameOdom();
-                    if(!bOK){
-                        if(mSensor == System::ODOM_IMU_MONOCULAR && pCurrentMap->isImuInitialized())
-                        {
-                            PredictStateIMU();
-                            
-                            if (mCurrentFrame.mTimeStamp-mTimeStampLost>time_recently_lost)
-                            {
-                                mState = LOST;
-                                Verbose::PrintMess("Track Lost...", Verbose::VERBOSITY_NORMAL);
-                                bOK=false;
-                            }
-                        }
-                        if(mState == LOST){
-                            bOK = TrackWithMotionModelOdom();
-                            Verbose::PrintMess("Track Lost... ODOMETRY ONLY!", Verbose::VERBOSITY_NORMAL);
-                        }
-                    }
+                    // TODO_LATER: LOST SITUATION
+                    // bOK = TrackReferenceKeyFrameOdom();
+                    // if(!bOK){
+                    //    if(mSensor == System::ODOM_IMU_MONOCULAR && pCurrentMap->isImuInitialized())
+                    //    {
+                    //        PredictStateIMU();
+                    //        
+                    //        if (mCurrentFrame.mTimeStamp-mTimeStampLost>time_recently_lost)
+                    //        {
+                    //            mState = LOST;
+                    //            Verbose::PrintMess("Track Lost...", Verbose::VERBOSITY_NORMAL);
+                    //            bOK=false;
+                    //        }
+                    //    }
+                    //    if(mState == LOST){
+                        //    bOK = TrackWithMotionModelOdom();
+                    //        Verbose::PrintMess("Track Lost... ODOMETRY ONLY!", Verbose::VERBOSITY_NORMAL);
+                    // }
+                    // }
                     bOK = true; // maybe we need to change this.
                     mpFrameDrawer->Update(this);
                     //if(mState!=OK)
@@ -1970,7 +1989,7 @@ void Tracking::Track()
 
         if(bOK)
             mState = OK;
-        else //if (mState == OK)
+        else if (mState == OK)
         {
             // Vuong commented this out according to OUR_SLAM2 TODO: Consider it !!!
             if(mSensor != System::ODOM_MONOCULAR || mSensor != System::ODOM_IMU_MONOCULAR) {
@@ -2502,7 +2521,7 @@ void Tracking::CreateInitialMapMonocular()
 
     float medianDepth = pKFini->ComputeSceneMedianDepth(2);
     float invMedianDepth;
-    if(mSensor == System::IMU_MONOCULAR)
+    if(mSensor == System::IMU_MONOCULAR || mSensor == System::ODOM_IMU_MONOCULAR)
         invMedianDepth = 4.0f/medianDepth; // 4.0f
     else
         invMedianDepth = 1.0f/medianDepth;
@@ -3024,7 +3043,8 @@ bool Tracking::TrackLocalMap()
     {
         if(mSensor == System::ODOM_MONOCULAR || mSensor == System::ODOM_IMU_MONOCULAR)
         {
-            //std::cout<<"No need to do PO"<<std::endl;
+            Optimizer::PoseOptimizationSE2(&mCurrentFrame); 
+            // Optimizer::PoseOptimization(&mCurrentFrame);
         }
         else
             Optimizer::PoseOptimization(&mCurrentFrame);
@@ -3034,21 +3054,39 @@ bool Tracking::TrackLocalMap()
         if(mCurrentFrame.mnId<=mnLastRelocFrameId+mnFramesToResetIMU)
         {
             Verbose::PrintMess("TLM: PoseOptimization ", Verbose::VERBOSITY_DEBUG);
-            Optimizer::PoseOptimization(&mCurrentFrame);
+            if(mSensor == System::ODOM_MONOCULAR || mSensor == System::ODOM_IMU_MONOCULAR)
+                Optimizer::PoseOptimizationSE2(&mCurrentFrame); 
+                // Optimizer::PoseOptimization(&mCurrentFrame);
+            else
+                Optimizer::PoseOptimization(&mCurrentFrame);
         }
         else
         {
-            // if(!mbMapUpdated && mState == OK) //  && (mnMatchesInliers>30))
-            //if(!mbMapUpdated) //  && (mnMatchesInliers>30))
-            //{
-            //    Verbose::PrintMess("TLM: PoseInertialOptimizationLastFrame ", Verbose::VERBOSITY_DEBUG);
-            //    inliers = Optimizer::PoseInertialOptimizationLastFrame(&mCurrentFrame); // , !mpLastKeyFrame->GetMap()->GetIniertialBA1());
-            //}
-            //else
-            //{
-            //    Verbose::PrintMess("TLM: PoseInertialOptimizationLastKeyFrame ", Verbose::VERBOSITY_DEBUG);
-            //    inliers = Optimizer::PoseInertialOptimizationLastKeyFrame(&mCurrentFrame); // , !mpLastKeyFrame->GetMap()->GetIniertialBA1());
-            //}
+             if(!(mSensor == System::ODOM_MONOCULAR || mSensor == System::ODOM_IMU_MONOCULAR))
+             {
+                if(!mbMapUpdated) //  && (mnMatchesInliers>30))
+                {
+                   Verbose::PrintMess("TLM: PoseInertialOptimizationLastFrame ", Verbose::VERBOSITY_DEBUG);
+                   inliers = Optimizer::PoseInertialOptimizationLastFrame(&mCurrentFrame); // , !mpLastKeyFrame->GetMap()->GetIniertialBA1());
+                }
+                else
+                {
+                   Verbose::PrintMess("TLM: PoseInertialOptimizationLastKeyFrame ", Verbose::VERBOSITY_DEBUG);
+                   inliers = Optimizer::PoseInertialOptimizationLastKeyFrame(&mCurrentFrame); // , !mpLastKeyFrame->GetMap()->GetIniertialBA1());
+                }
+            }else {
+                // TODO_JV: New PO here 
+                if(!mbMapUpdated) //  && (mnMatchesInliers>30))
+                {
+                   Verbose::PrintMess("TLM: PoseInertialOptimizationLastFrame ", Verbose::VERBOSITY_DEBUG);
+                   inliers = Optimizer::PoseInertialOptimizationLastFrame(&mCurrentFrame); // , !mpLastKeyFrame->GetMap()->GetIniertialBA1());
+                }
+                else
+                {
+                   Verbose::PrintMess("TLM: PoseInertialOptimizationLastKeyFrame ", Verbose::VERBOSITY_DEBUG);
+                   inliers = Optimizer::PoseInertialOptimizationLastKeyFrame(&mCurrentFrame); // , !mpLastKeyFrame->GetMap()->GetIniertialBA1());
+                }
+            }
         }
     }
 
@@ -3094,7 +3132,7 @@ bool Tracking::TrackLocalMap()
         return true;
 
 
-    if (mSensor == System::IMU_MONOCULAR)
+    if (mSensor == System::IMU_MONOCULAR || mSensor == System::ODOM_IMU_MONOCULAR)
     {
         if(mnMatchesInliers<15)
         {
@@ -3123,11 +3161,13 @@ bool Tracking::TrackLocalMap()
 
 bool Tracking::NeedNewKeyFrame()
 {
-    if(((mSensor == System::IMU_MONOCULAR) || (mSensor == System::IMU_STEREO)) && !mpAtlas->GetCurrentMap()->isImuInitialized())
+    if(((mSensor == System::IMU_MONOCULAR) || (mSensor == System::ODOM_IMU_MONOCULAR) || (mSensor == System::IMU_STEREO)) && !mpAtlas->GetCurrentMap()->isImuInitialized())
     {
         if (mSensor == System::IMU_MONOCULAR && (mCurrentFrame.mTimeStamp-mpLastKeyFrame->mTimeStamp)>=0.25)
             return true;
         else if (mSensor == System::IMU_STEREO && (mCurrentFrame.mTimeStamp-mpLastKeyFrame->mTimeStamp)>=0.25)
+            return true;
+        else if (mSensor == System::ODOM_IMU_MONOCULAR && (mCurrentFrame.mTimeStamp-mpLastKeyFrame->mTimeStamp)>=0.25)
             return true;
         else
             return false;
