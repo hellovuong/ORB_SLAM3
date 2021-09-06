@@ -390,6 +390,10 @@ void FrameDrawer::DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText)
     {
         s << " LOADING ORB VOCABULARY. PLEASE WAIT...";
     }
+    else if(nState==Tracking::RECENTLY_LOST)
+    {
+        s << " RECENTLY LOST. ";
+    }
 
     int baseline=0;
     cv::Size textSize = cv::getTextSize(s.str(),cv::FONT_HERSHEY_PLAIN,1,1,&baseline);

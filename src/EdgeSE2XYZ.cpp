@@ -183,7 +183,7 @@ void EdgeSE2XYZOnlyPose::computeError(){
 
 bool EdgeSE2XYZOnlyPose::isDepthPositive(){
     const VertexSE2* v1 = static_cast<const VertexSE2*>(_vertices[0]);
-    return (SE2ToSE3(v1->estimate().inverse()).map(Xw))(2) > 0.0;
+    return (SE2ToSE3(v1->estimate()).map(Xw))(2) > 0.0;
 }
 
 void EdgeSE2XYZOnlyPose::linearizeOplus(){

@@ -31,7 +31,7 @@
 #include "g2o_types_slam2d_api.h"
 #include <Eigen/Core>
 #include <Eigen/Geometry>
-#include <g2o/core/eigen_types.h>
+#include "../core/eigen_types.h"
 #include<opencv2/core/core.hpp>
 
 using namespace Eigen;

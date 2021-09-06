@@ -502,7 +502,9 @@ public:
     IMU::Preintegrated* mpImuPreintegrated;
     IMU::Calib mImuCalib;
 
-
+    // Preintegrated WOdometry measurements from previous keyframe
+    ODOM::Preintegrated* mpOdomPreintegrated;
+    
     unsigned int mnOriginMapId;
 
     string mNameFile;

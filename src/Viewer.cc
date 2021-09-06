@@ -179,7 +179,7 @@ void Viewer::Run()
     bool bStepByStep = false;
     bool bCameraView = true;
 
-    if(mpTracker->mSensor == mpSystem->MONOCULAR || mpTracker->mSensor == mpSystem->STEREO || mpTracker->mSensor == mpSystem->RGBD)
+    if(mpTracker->mSensor == mpSystem->MONOCULAR || mpTracker->mSensor == mpSystem->STEREO || mpTracker->mSensor == mpSystem->RGBD || mpTracker->mSensor == mpSystem->ODOM_MONOCULAR)
     {
         menuShowGraph = true;
     }

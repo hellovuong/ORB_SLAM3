@@ -38,7 +38,9 @@ void LoadOdom(const string &strOdomPath, vector<double> &vTimeStamps,
                 vector<g2o::SE2> &vOdo);
 int main(int argc, char **argv)
 {
-    if(argc != 4)
+    bool bFileName = true;
+    string file_name = argv[argc-1];
+    if(argc < 4)
     {
         cerr << endl << "Usage: ./mono_openloris path_to_vocabulary path_to_settings path_to_sequence" << endl;
         return 1;
@@ -71,13 +73,14 @@ int main(int argc, char **argv)
     {
         // Read image from file
         im = cv::imread(vstrImageFilenames[ni],CV_LOAD_IMAGE_UNCHANGED);
-        double tframe = vTimestamps[ni];
-        //std::cout<<tframe<<' '<<vOdo[ni].translation().x()<<' '<<vOdo[ni].translation().y()<<std::endl;
         if(im.empty())
         {
             cerr << endl << "Failed to load image at: " << vstrImageFilenames[ni] << endl;
             return 1;
         }
+        cv::resize(im,im,cv::Size(640,360));
+        double tframe = vTimestamps[ni];
+        //std::cout<<tframe<<' '<<vOdo[ni].translation().x()<<' '<<vOdo[ni].translation().y()<<std::endl;
 
 #ifdef COMPILEDWITHC11
         std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
@@ -124,21 +127,34 @@ int main(int argc, char **argv)
     cout << "mean tracking time: " << totaltime/nImages << endl;
 
     // Save camera trajectory
-    SLAM.SavePoseKeyFrameTrajectoryTUM("KeyFrameTrajectory_body.txt");    
-    SLAM.SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory_cam.txt");
+    if(bFileName)
+    {
+        SLAM.SaveBodyKeyFrameTrajectoryTUM("kf_body_" + file_name + ".txt");
+        SLAM.SaveBodyTrajectoryTUM("f_body_" + file_name + ".txt"); 
+        SLAM.SaveKeyFrameTrajectoryTUM("kf_cam_" + file_name + ".txt");
+        cout << "trajectory saved!" << endl;
+    }
+    else
+    {
+        SLAM.SaveBodyKeyFrameTrajectoryTUM("KeyFrameTrajectory_body.txt");
+        SLAM.SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory_cam.txt");
+        cout << "trajectory saved!" << endl;
+    }
     return 0;
 }
 
 void LoadImages(const string &strPathToSequence, vector<string> &vstrImageFilenames, vector<double> &vTimestamps)
 {
     ifstream fTimes;
-    string strPathTimeFile = strPathToSequence + "/times.txt";
+    string strPathTimeFile = strPathToSequence + "/zed2_times_left.txt";
     fTimes.open(strPathTimeFile.c_str());
-    string strPrefixLeft = strPathToSequence + "/color/";
+    string strPrefixLeft = strPathToSequence + "/zed2_left/";
     while(!fTimes.eof())
     {
         string s;
         getline(fTimes,s);
+        if(s[0] == '#')
+            continue;
         if(!s.empty())
         {
             stringstream ss;
@@ -154,7 +170,7 @@ void LoadImages(const string &strPathToSequence, vector<string> &vstrImageFilena
 void LoadOdom(const string &strOdomPath, vector<double> &vTimeStamps, vector<g2o::SE2> &vOdo)
 {
     ifstream fOdom;
-    fOdom.open(strOdomPath + "/odom_interp.txt");
+    fOdom.open(strOdomPath + "/odom_interp_shifted.txt");
     vOdo.reserve(5000);
     double ts;
     Eigen::Vector3d xyr;
