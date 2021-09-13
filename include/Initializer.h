@@ -82,10 +82,10 @@ private:
 
 
     // Keypoints from Reference Frame (Frame 1)
-    vector<cv::KeyPoint> mvKeys1;
+    vector<cv::KeyPoint> mvKeys1Un,mvKeys1;
 
     // Keypoints from Current Frame (Frame 2)
-    vector<cv::KeyPoint> mvKeys2;
+    vector<cv::KeyPoint> mvKeys2Un, mvKeys2;
 
     // Current Matches from Reference to Current
     vector<Match> mvMatches12;

@@ -116,6 +116,8 @@ public:
     cv::Mat GetImuRotation();
     cv::Mat GetImuPose();
 
+    cv::Mat GetOdomPose();
+
     void SetNewBias(const IMU::Bias &b);
 
     // Check if a MapPoint is in the frustum of the camera

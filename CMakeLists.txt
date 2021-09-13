@@ -194,6 +194,10 @@ add_executable(mono_odom_openloris
 Examples/Monocular-Odom/mono_odom_openloris.cc)
 target_link_libraries(mono_odom_openloris ${PROJECT_NAME})
 
+add_executable(mono_odom_openloris_t265
+Examples/Monocular-Odom/mono_odom_openloris_t265.cc)
+target_link_libraries(mono_odom_openloris_t265 ${PROJECT_NAME})
+
 add_executable(mono_odom_zed2
 Examples/Monocular-Odom/mono_odom_zed2.cc)
 target_link_libraries(mono_odom_zed2 ${PROJECT_NAME})
@@ -227,4 +231,8 @@ add_executable(stereo_inertial_tum_vi
 Examples/Stereo-Inertial/stereo_inertial_tum_vi.cc)
 target_link_libraries(stereo_inertial_tum_vi ${PROJECT_NAME})
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/RGB-D-Odom)
+add_executable(rgbd_odom
+Examples/RGB-D-Odom/rgbd_odom_openloris.cc)
+target_link_libraries(rgbd_odom ${PROJECT_NAME})
 

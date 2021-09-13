@@ -178,7 +178,7 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
                              mpAtlas, mpKeyFrameDatabase, strSettingsFile, mSensor, strSequence);
 
     //Initialize the Local Mapping thread and launch
-    mpLocalMapper = new LocalMapping(this, mpAtlas, mSensor==MONOCULAR || mSensor==IMU_MONOCULAR || mSensor == ODOM_MONOCULAR, mSensor==IMU_MONOCULAR || mSensor==IMU_STEREO, mSensor == ODOM_MONOCULAR, strSequence);
+    mpLocalMapper = new LocalMapping(this, mpAtlas, mSensor==MONOCULAR || mSensor==IMU_MONOCULAR || mSensor == ODOM_MONOCULAR, mSensor==IMU_MONOCULAR || mSensor==IMU_STEREO, mSensor == ODOM_MONOCULAR || mSensor == ODOM_RGBD, strSequence);
     mptLocalMapping = new thread(&ORB_SLAM3::LocalMapping::Run,mpLocalMapper);
     mpLocalMapper->mInitFr = initFr;
     mpLocalMapper->mThFarPoints = fsSettings["thFarPoints"];
@@ -286,9 +286,9 @@ cv::Mat System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, const
     return Tcw;
 }
 
-cv::Mat System::TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const double &timestamp, string filename)
+cv::Mat System::TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const double &timestamp, const g2o::SE2 &odo, string filename)
 {
-    if(mSensor!=RGBD)
+    if(mSensor!=RGBD && mSensor!=ODOM_RGBD)
     {
         cerr << "ERROR: you called TrackRGBD but input sensor was not set to RGBD." << endl;
         exit(-1);
@@ -335,8 +335,8 @@ cv::Mat System::TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const doub
     }
 
 
+    mpTracker->mOdom = odo;
     cv::Mat Tcw = mpTracker->GrabImageRGBD(im,depthmap,timestamp,filename);
-
     unique_lock<mutex> lock2(mMutexState);
     mTrackingState = mpTracker->mState;
     mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
@@ -438,7 +438,7 @@ cv::Mat System::TrackOdomMono(const cv::Mat &im, const g2o::SE2 &odo, const doub
             mbDeactivateLocalizationMode = false;
         }
     }
-    mpTracker->mOdom = odo_;
+    // mpTracker->mOdom = odo_;
     cv::Mat Tcw = mpTracker->GrabImageOdomMono(im, odo, timestamp, filename);
 
     unique_lock<mutex> lock2(mMutexState);
@@ -503,7 +503,11 @@ void System::Shutdown()
         if(!mpLocalMapper->isFinished())
             cout << "mpLocalMapper is not finished" << endl;
         if(!mpLoopCloser->isFinished())
+        {
             cout << "mpLoopCloser is not finished" << endl;
+            cout << "break anyway..." << endl;
+            break;
+        }    
         if(mpLoopCloser->isRunningGBA()){
             cout << "mpLoopCloser is running GBA" << endl;
             cout << "break anyway..." << endl;

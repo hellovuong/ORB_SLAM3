@@ -4,6 +4,7 @@ namespace ORB_SLAM3
 {
 namespace ODOM
 {
+const float eps = 1e-4;
 Preintegrated::Preintegrated(Preintegrated* mOdomPre): meas(mOdomPre->meas), cov(mOdomPre->cov)
 {
     
@@ -24,7 +25,12 @@ void Preintegrated::MergePrevious(Preintegrated* pPre)
 void Preintegrated::IntegrateNewMeasurement(g2o::SE2 &currOdom, g2o::SE2 &lastOdom)
 {
     g2o::SE2 odok = currOdom - lastOdom;
-
+    
+    // Check zero movement
+    if(fabs(fabs(odok.rotation().angle())-0.001) < eps)
+    {    
+        odok.setRotation(Eigen::Rotation2Dd(0.0));
+    } 
     Vector2d odork(odok.translation().x(), odok.translation().y());                              
     Matrix2d Phi_ik = Rotation2Dd(meas[2]).toRotationMatrix();                                    
 

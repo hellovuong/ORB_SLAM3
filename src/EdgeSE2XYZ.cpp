@@ -94,7 +94,7 @@ void EdgeSE2XYZ::computeError()
     Vector3d lc = Tcw.map(v2->estimate());
 
     Vector2d obs(_measurement);
-    _error = cam_project(lc) - obs;
+    _error = pCamera->project(lc) - obs;
     
 }
 
@@ -130,11 +130,11 @@ void EdgeSE2XYZ::linearizeOplus()
     double zc_inv = 1. / zc;
     double zc_inv2 = zc_inv * zc_inv;
 
-    Matrix23d J_pi;
-    J_pi << fx * zc_inv, 0, -fx*lc(0)*zc_inv2,
-            0, fx * zc_inv, -fx*lc(1)*zc_inv2;
+    // Matrix23d J_pi;
+    // J_pi << fx * zc_inv, 0, -fx*lc(0)*zc_inv2,
+            // 0, fx * zc_inv, -fx*lc(1)*zc_inv2;
 
-    Matrix23d J_pi_Rcw = J_pi * Rcw;
+    Matrix23d J_pi_Rcw = pCamera->projectJac(lc) * Rcw;
 
     _jacobianOplusXi.block<2,2>(0,0) = -J_pi_Rcw.block<2,2>(0,0);
     _jacobianOplusXi.block<2,1>(0,2) = (J_pi_Rcw * skew(lw-pi)).block<2,1>(0,2);

@@ -42,7 +42,7 @@
 
 #include "OptimizableTypes.h"
 
-//#define VIS_BA
+// #define VIS_BA
 
 namespace ORB_SLAM3
 {
@@ -118,7 +118,7 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
 
     vector<MapPoint*> vpMapPointEdgeStereo;
     vpMapPointEdgeStereo.reserve(nExpectedSize);
-
+    vector<int> obsindex;
 
     // Set KeyFrame vertices
 
@@ -199,6 +199,7 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
                 vpEdgesMono.push_back(e);
                 vpEdgeKFMono.push_back(pKF);
                 vpMapPointEdgeMono.push_back(pMP);
+                obsindex.push_back(leftIndex);
             }
             else if(leftIndex != -1 && pKF->mvuRight[leftIndex] >= 0) //Stereo observation
             {
@@ -283,7 +284,45 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
             vbNotIncludedMP[i]=false;
         }
     }
+#ifdef VIS_BA
+{
+    cv::Mat img1 = vpKFs[0]->imgLeft.clone();
+    cv::cvtColor(img1,img1,cv::COLOR_GRAY2RGB);
+    cv::Mat img2 = vpKFs[1]->imgLeft.clone();
+    cv::cvtColor(img2,img2,cv::COLOR_GRAY2RGB);
 
+    for(int i=0;i<vpEdgesMono.size();i++) {
+        // if(vpKFs[i]->mnId!=0)
+        //     continue;
+        KeyFrame* pKF = vpEdgeKFMono[i]; 
+        const cv::KeyPoint &kpUn = pKF->mvKeysUn[obsindex[i]];
+        std::cout<<"("<<pKF->mvKeysUn[obsindex[i]].pt.x<<','<<pKF->mvKeysUn[obsindex[i]].pt.y<<") - "<<"("<<pKF->mvKeys[obsindex[i]].pt.x<<','<<pKF->mvKeys[obsindex[i]].pt.y<<")\n";
+        //Mono Observation
+        cv::Point2f pMeas = kpUn.pt;
+        g2o::VertexSE3Expmap* currKF = static_cast<g2o::VertexSE3Expmap*>(optimizer.vertex(pKF->mnId));
+        g2o::VertexSBAPointXYZ* vPoint = static_cast<g2o::VertexSBAPointXYZ*>(optimizer.vertex(vpMapPointEdgeMono[i]->mnId +1 + maxKFid));
+        
+        // g2o::SE2 temp_se2 = currKF->estimate().inverse();
+        // g2o::SE3Quat Tbw;
+        // Tbw.setTranslation(Eigen::Vector3d(temp_se2.translation()(0), temp_se2.translation()(1), 0));
+        // Tbw.setRotation(Eigen::Quaterniond(AngleAxisd(temp_se2.rotation().angle(), Vector3d::UnitZ())));
+        
+        // Tbw = SE2ToSE3(currKF->estimate().inverse());
+        //g2o::SE3Quat Tcw = Converter::toSE3Quat(pKF->Tcb) * Tbw;
+        Eigen::Vector3d lc = currKF->estimate().map(vPoint->estimate());
+        auto eigProj =pKF->mpCamera->project(lc);
+        cv::Point2f pProj(eigProj.x(),eigProj.y());
+        
+        cv::circle((pKF->mnId == 0)?img1:img2,pMeas,3,CV_RGB(0,255,0),-1);
+        cv::circle((pKF->mnId == 0)?img1:img2,pProj,3,CV_RGB(0,150,0),-1);
+        cv::circle((pKF->mnId == 0)?img1:img2,pProj,3,CV_RGB(0,0,0),1);
+        cv::line((pKF->mnId == 0)?img1:img2,pMeas,pProj,CV_RGB(0,0,255),1);
+    }
+    cv::Mat img;
+    cv::hconcat(img1,img2,img);
+    cv::imshow("BA After Init before opt",img);cv::waitKey(1);
+}
+#endif
     //cout << "end inserting MPs" << endl;
     // Optimize!
     optimizer.setVerbose(true);
@@ -431,8 +470,8 @@ void Optimizer::BundleAdjustmentSE2(const vector<KeyFrame *> &vpKFs, const vecto
     vbNotIncludedMP.resize(vpMP.size());
 
     const cv::Mat Tbc = vpKFs[0]->Tbc;
-    const cv::Mat Rbc = Tbc.rowRange(0,3).colRange(0,3);
-    const cv::Mat tbc = Tbc.rowRange(0,3).col(3);
+    // const cv::Mat Rbc = Tbc.rowRange(0,3).colRange(0,3);
+    // const cv::Mat tbc = Tbc.rowRange(0,3).col(3);
 
     g2o::SparseOptimizer optimizer;
     optimizer.setVerbose(false);
@@ -457,9 +496,9 @@ void Optimizer::BundleAdjustmentSE2(const vector<KeyFrame *> &vpKFs, const vecto
         if(pKF->isBad())
             continue;
         g2o::VertexSE2 * vSE2 = new g2o::VertexSE2();
-        cv::Mat Tcw = pKF->GetPose();
-        cv::Mat Tw0b = Tbc * (Tbc * Tcw).inv();
-        vSE2->setEstimate(Converter::toSE2(Tw0b));
+        // cv::Mat Tcw = pKF->GetPose();
+        // cv::Mat Tw0b = Tbc * (Tbc * Tcw).inv();
+        vSE2->setEstimate(Converter::toSE2(pKF->GetOdomPose()));
         vSE2->setId(pKF->mnId);
         vSE2->setFixed(pKF->mnId==0);
         optimizer.addVertex(vSE2);
@@ -467,35 +506,38 @@ void Optimizer::BundleAdjustmentSE2(const vector<KeyFrame *> &vpKFs, const vecto
             maxKFid=pKF->mnId;
     }
 
-    // //Edges for Odometry
-    // for(size_t i=0; i<vpKFs.size(); i++)
-    // {
-    //     auto& pKFi = vpKFs[i];
-    //     if(pKFi->isBad())
-    //         continue;
-    //     auto& pKF1 = pKFi->odomFromThis.first;
-    //     if(!pKF1)
-    //         continue;
-    //     auto& meas = pKFi->odomFromThis.second;
-        
-    //     {
-    //         Eigen::Map<Eigen::Matrix3d, RowMajor>info (meas.cov);
-    //         g2o::PreEdgeSE2* e = new g2o::PreEdgeSE2;
-    //         e->vertices()[0] = optimizer.vertex(pKFi->mnId);
-            
-    //         e->vertices()[1] = optimizer.vertex(pKF1->mnId);
+    //Edges for Odometry
+    vector<g2o::PreEdgeSE2*> veo(vpKFs.size(),(g2o::PreEdgeSE2*)NULL);
+    for(size_t i=0; i<vpKFs.size(); i++)
+    {
+        if(!vpKFs[i]->mPrevKF)
+        {
+            cout << "GBA: NOT ODOM LINK TO PREV KF" << endl;
+            continue;
+        }
+        KeyFrame* pKFi = vpKFs[i];
+        g2o::HyperGraph::Vertex* VP1 = optimizer.vertex(pKFi->mPrevKF->mnId);
+        g2o::HyperGraph::Vertex* VP = optimizer.vertex(pKFi->mnId);
+        veo[i] = new g2o::PreEdgeSE2();
 
-    //         if(!e->vertices()[0] || !e->vertices()[1])
-    //             continue;
-    //         e->setMeasurement(Eigen::Vector3d(meas.meas));
-    //         e->setInformation(info);
-    //         optimizer.addEdge(e);
-    //     }
-            
-    // }
+        veo[i]->setVertex(0,dynamic_cast<g2o::OptimizableGraph::Vertex*>(VP1));
+        veo[i]->setVertex(1,dynamic_cast<g2o::OptimizableGraph::Vertex*>(VP));
+
+        veo[i]->setMeasurement(pKFi->mpOdomPreintegrated->meas);
+        veo[i]->setInformation(pKFi->mpOdomPreintegrated->cov.inverse()); // check->correct
+
+        // if(optimizer.vertex(pKFi->mnId) == NULL || optimizer.vertex(pKFiPrev->mnId) == NULL)
+                // continue;
+        optimizer.addEdge(veo[i]);
+
+    }
 
     const float thHuber2D = sqrt(5.99);
 
+    std::vector<int> obsIndex;
+    vector<g2o::EdgeSE2XYZ*> vpEdgesMono;
+    
+    vector<int> vKFUsed, vPntId;
     // Set MapPoint vertices
     for(size_t i=0; i<vpMP.size(); i++)
     {
@@ -504,13 +546,13 @@ void Optimizer::BundleAdjustmentSE2(const vector<KeyFrame *> &vpKFs, const vecto
             continue;
         g2o::VertexSBAPointXYZ* vPoint = new g2o::VertexSBAPointXYZ();
         cv::Mat point_pose = pMP->GetWorldPos();
-        cv::Mat point_pose_w0 = Rbc * point_pose + tbc;
-        vPoint->setEstimate(Converter::toVector3d(point_pose_w0));
+        // cv::Mat point_pose_w0 = Rbc * point_pose + tbc;
+        Vector3d lw0 = Converter::toSE3Quat(Tbc).map(Converter::toVector3d(pMP->GetWorldPos()));
+        vPoint->setEstimate(lw0);
         const int id = pMP->mnId+maxKFid+1;
         vPoint->setId(id);
         vPoint->setMarginalized(true);
         optimizer.addVertex(vPoint);
-
        const map<KeyFrame*,tuple<int,int>> observations = pMP->GetObservations();
 
         int nEdges = 0;
@@ -541,34 +583,33 @@ void Optimizer::BundleAdjustmentSE2(const vector<KeyFrame *> &vpKFs, const vecto
             // Compute info/covariance matrix 
             const float &invSigma2 = pKF->mvInvLevelSigma2[kpUn.octave];
             Eigen::Matrix2d Sigma_u = Eigen::Matrix2d::Identity() * invSigma2;
-            cv::Mat Tcw = pKF->GetPose();
+            // cv::Mat Tcw = pKF->GetPose();
 
-            cv::Mat Tw0b = Tbc * (Tbc * Tcw).inv();
-            cv::Mat Tcw0 = (Tbc *  Tcw.inv()).inv();
+            // cv::Mat Tcw0 = (Tbc *  Tcw.inv()).inv();
+            cv::Mat Tcw0 = pKF->GetPose() * pKF->Tcb;
             Eigen::Matrix3d Rcw0 = Converter::toMatrix3d(Tcw0.rowRange(0,3).colRange(0,3));
 
-            Eigen::Vector3d lw0 = Converter::toVector3d(point_pose);
             Eigen::Vector3d lc = Converter::toSE3Quat(Tcw0).map(lw0);
             
-            double zc = lc(2);
-            double zc_inv = 1. / zc;
-            double zc_inv_2 = zc_inv * zc_inv;
-
-            g2o::Matrix23d J_pi;
-            const float fx = pKF->fx;
-            J_pi<< fx * zc_inv, 0, -fx*lc(0)*zc_inv_2,
-                0, fx * zc_inv, -fx*lc(1)*zc_inv_2;
+            // double zc = lc(2);
+            // double zc_inv = 1. / zc;
+            // double zc_inv_2 = zc_inv * zc_inv;
+// 
+            // g2o::Matrix23d J_pi;
+            // const float fx = pKF->fx;
+            // J_pi<< fx * zc_inv, 0, -fx*lc(0)*zc_inv_2,
+                // 0, fx * zc_inv, -fx*lc(1)*zc_inv_2;
             
-            Eigen::Vector3d pi(Tw0b.at<float>(0,3),Tw0b.at<float>(1,3),0);
-            g2o::Matrix23d J_pi_Rcw = J_pi * Rcw0;
+            Eigen::Vector3d pi(pKF->GetOdomPose().at<float>(0,3),pKF->GetOdomPose().at<float>(1,3),0);
+            g2o::Matrix23d J_pi_Rcw = pKF->mpCamera->projectJac(lc) * Rcw0;
 
             Eigen::Matrix2d J_rotxy = (J_pi_Rcw * Converter::skew(lw0-pi)).block<2,2>(0,0);
             Eigen::Matrix<double,2,1> J_z = -J_pi_Rcw.block<2,1>(0,2);
-            float Sigma_rotxy = 1e6; // Plane Motion X_Rot_Info = 1e6
+            float Sigma_rotxy = 1./1e6; // Plane Motion X_Rot_Info = 1e6
             float Sigma_z = 1.;       // Plane Motion Z_Info = 1
 
             Eigen::Matrix2d Sigma_all = Sigma_rotxy * J_rotxy * J_rotxy.transpose() +
-                                        Sigma_z * J_z * J_z.transpose() + Sigma_u;
+                                        Sigma_z * J_z * J_z.transpose() + Sigma_u.inverse();
             
             e->setInformation(Sigma_all.inverse());
 
@@ -579,14 +620,19 @@ void Optimizer::BundleAdjustmentSE2(const vector<KeyFrame *> &vpKFs, const vecto
                 rk->setDelta(thHuber2D);
             }
 
-            e->fx = pKF->fx;
-            e->fy = pKF->fy;
-            e->cx = pKF->cx;
-            e->cy = pKF->cy;
-            e->Tbc = Converter::toSE3Quat(Tbc);
-            e->Tcb = Converter::toSE3Quat(Tbc.inv());
+            // e->fx = pKF->fx;
+            // e->fy = pKF->fy;
+            // e->cx = pKF->cx;
+            // e->cy = pKF->cy;
+            
+            e->pCamera = pKF->mpCamera;
+            e->Tbc = Converter::toSE3Quat(pKF->Tbc);
+            e->Tcb = Converter::toSE3Quat(pKF->Tcb);
             optimizer.addEdge(e);
-
+            vpEdgesMono.push_back(e);
+            obsIndex.push_back(leftIndex);
+            vKFUsed.push_back(pKF->mnId);
+            vPntId.push_back(id);
         }
 
         if(nEdges==0)
@@ -599,13 +645,87 @@ void Optimizer::BundleAdjustmentSE2(const vector<KeyFrame *> &vpKFs, const vecto
             vbNotIncludedMP[i]=false;
         }
     }
+#ifdef VIS_BA
+{
+    cv::Mat img1 = vpKFs[0]->imgLeft.clone();
+    cv::cvtColor(img1,img1,cv::COLOR_GRAY2RGB);
+    cv::Mat img2 = vpKFs[1]->imgLeft.clone();
+    cv::cvtColor(img2,img2,cv::COLOR_GRAY2RGB);
 
+    for(int i=0;i<vpEdgesMono.size();i++) {
+        // if(vpKFs[i]->mnId!=0)
+        //     continue;
+        KeyFrame* pKF = vpKFs[vKFUsed[i]]; 
+        const cv::KeyPoint &kpUn = pKF->mvKeysUn[obsIndex[i]];
+        //Mono Observation
+        cv::Point2f pMeas = kpUn.pt;
+        g2o::VertexSE2* currKF = static_cast<g2o::VertexSE2*>(optimizer.vertex(pKF->mnId));
+        g2o::VertexSBAPointXYZ* vPoint = static_cast<g2o::VertexSBAPointXYZ*>(optimizer.vertex(vPntId[i]));
+        
+        g2o::SE2 temp_se2 = currKF->estimate().inverse();
+        g2o::SE3Quat Tbw;
+        Tbw.setTranslation(Eigen::Vector3d(temp_se2.translation()(0), temp_se2.translation()(1), 0));
+        Tbw.setRotation(Eigen::Quaterniond(AngleAxisd(temp_se2.rotation().angle(), Vector3d::UnitZ())));
+        
+        // Tbw = SE2ToSE3(currKF->estimate().inverse());
+        g2o::SE3Quat Tcw = Converter::toSE3Quat(pKF->Tcb) * Tbw;
+        Eigen::Vector3d lc = Tcw.map(vPoint->estimate());
+        auto eigProj =pKF->mpCamera->project(lc);
+        cv::Point2f pProj(eigProj.x(),eigProj.y());
+        
+        cv::circle((pKF->mnId == 0)?img1:img2,pMeas,3,CV_RGB(0,255,0),-1);
+        cv::circle((pKF->mnId == 0)?img1:img2,pProj,3,CV_RGB(0,150,0),-1);
+        cv::circle((pKF->mnId == 0)?img1:img2,pProj,3,CV_RGB(0,0,0),1);
+        cv::line((pKF->mnId == 0)?img1:img2,pMeas,pProj,CV_RGB(0,0,255),1);
+    }
+    cv::Mat img;
+    cv::vconcat(img1,img2,img);
+    cv::imshow("BA After Init before opt",img);cv::waitKey(0);
+}
+#endif
     // Optimize!
     optimizer.initializeOptimization();
     optimizer.optimize(nIterations);
 
     // Recover optimized data
+    #ifdef VIS_BA
+{
+    cv::Mat img1 = vpKFs[0]->imgLeft.clone();
+    cv::cvtColor(img1,img1,cv::COLOR_GRAY2RGB);
+    cv::Mat img2 = vpKFs[1]->imgLeft.clone();
+    cv::cvtColor(img2,img2,cv::COLOR_GRAY2RGB);
 
+    for(int i=0;i<vpEdgesMono.size();i++) {
+        // if(vpKFs[i]->mnId!=0)
+        //     continue;
+        KeyFrame* pKF = vpKFs[vKFUsed[i]]; 
+        const cv::KeyPoint &kpUn = pKF->mvKeysUn[obsIndex[i]];
+        //Mono Observation
+        cv::Point2f pMeas = kpUn.pt;
+        g2o::VertexSE2* currKF = static_cast<g2o::VertexSE2*>(optimizer.vertex(pKF->mnId));
+        g2o::VertexSBAPointXYZ* vPoint = static_cast<g2o::VertexSBAPointXYZ*>(optimizer.vertex(vPntId[i]));
+        
+        g2o::SE2 temp_se2 = currKF->estimate().inverse();
+        g2o::SE3Quat Tbw;
+        Tbw.setTranslation(Eigen::Vector3d(temp_se2.translation()(0), temp_se2.translation()(1), 0));
+        Tbw.setRotation(Eigen::Quaterniond(AngleAxisd(temp_se2.rotation().angle(), Vector3d::UnitZ())));
+        
+        // Tbw = SE2ToSE3(currKF->estimate().inverse());
+        g2o::SE3Quat Tcw = Converter::toSE3Quat(pKF->Tcb) * Tbw;
+        Eigen::Vector3d lc = Tcw.map(vPoint->estimate());
+        auto eigProj =pKF->mpCamera->project(lc);
+        cv::Point2f pProj(eigProj.x(),eigProj.y());
+        
+        cv::circle((pKF->mnId == 0)?img1:img2,pMeas,3,CV_RGB(0,255,0),-1);
+        cv::circle((pKF->mnId == 0)?img1:img2,pProj,3,CV_RGB(0,150,0),-1);
+        cv::circle((pKF->mnId == 0)?img1:img2,pProj,3,CV_RGB(0,0,0),1);
+        cv::line((pKF->mnId == 0)?img1:img2,pMeas,pProj,CV_RGB(0,0,255),1);
+    }
+    cv::Mat img;
+    cv::vconcat(img1,img2,img);
+    cv::imshow("BA After Init After Opt",img);cv::waitKey(0);
+}
+#endif
     //Keyframes
     for(size_t i=0; i<vpKFs.size(); i++)
     {
@@ -615,15 +735,15 @@ void Optimizer::BundleAdjustmentSE2(const vector<KeyFrame *> &vpKFs, const vecto
 
         g2o::VertexSE2* vSE2 = static_cast<g2o::VertexSE2*>(optimizer.vertex(pKF->mnId));
         cv::Mat vw0b = vSE2->estimate().toCvSE3();
-        cv::Mat pose = (Tbc.inv() * (vw0b * Tbc)).inv();                         // Tcw = (Tcb * (vw0b * Tbc)).inv()
+        cv::Mat Pose_Inverse = pKF->Tcb * vw0b * pKF->Tbc;                         // Tcw = (Tcb * (vw0b * Tbc)).inv()
         if(nLoopKF==0)
         {
-            pKF->SetPose(pose);
+            pKF->SetPose(Converter::invSE3(Pose_Inverse));
         }
         else
         {
             pKF->mTcwGBA.create(4,4,CV_32F);
-            pose.copyTo(pKF->mTcwGBA);
+            Converter::invSE3(Pose_Inverse).copyTo(pKF->mTcwGBA);
             pKF->mnBAGlobalForKF = nLoopKF;
         }
     }
@@ -640,7 +760,7 @@ void Optimizer::BundleAdjustmentSE2(const vector<KeyFrame *> &vpKFs, const vecto
             continue;
         g2o::VertexSBAPointXYZ* vPoint = static_cast<g2o::VertexSBAPointXYZ*>(optimizer.vertex(pMP->mnId+maxKFid+1));
         cv::Mat vMPw0 = Converter::toCvMat(vPoint->estimate());
-        cv::Mat vMP = Rbc.inv() * (vMPw0 - tbc);
+        cv::Mat vMP = Converter::toCvMat(Converter::toSE3Quat(vpKFs[0]->Tcb).map(vPoint->estimate())); //Rbc.inv() * (vMPw0 - tbc);
         if(nLoopKF==0)
         {
             pMP->SetWorldPos(vMP);
@@ -1394,12 +1514,38 @@ int Optimizer::PoseOptimization(Frame *pFrame)
         if(optimizer.edges().size()<10)
             break;
     }    
+#ifdef VIS_BA
+    cv::Mat img1 = pFrame->imgLeft.clone();
+    cv::cvtColor(img1,img1,cv::COLOR_GRAY2RGB);
+    for(int i=0;i<vpEdgesMono.size();i++) {
+        auto kpUn = pFrame->mvKeys[vnIndexEdgeMono[i]];
+        //Mono Observation
+        cv::Point2f pMeas = kpUn.pt;
+        auto* v1 = static_cast<g2o::VertexSE3Expmap*>(optimizer.vertex(0));
+        //g2o::VertexSBAPointXYZ* v2 = static_cast<g2o::VertexSBAPointXYZ*>(optimizer.vertex(vpMapPointEdgeMono[i]->mnId+maxKFid+1));
+        
+        auto eigProj = pFrame->mpCamera->project(v1->estimate().map(vpEdgesMono[i]->Xw));
+        cv::Point2f pProj(eigProj.x(),eigProj.y());
 
+        cv::circle(img1,pMeas,3,CV_RGB(0,255,0),-1);
+        if(vpEdgesMono[i]->chi2()>5.991 || !vpEdgesMono[i]->isDepthPositive())
+            cv::circle(img1,pProj,3,CV_RGB(255,0,0),-1);
+        else
+            cv::circle(img1,pProj,3,CV_RGB(0,150,0),-1);
+        cv::circle(img1,pProj,3,CV_RGB(0,0,0),1);
+        cv::line(img1,pMeas,pProj,CV_RGB(0,0,255),1);
+    }
+    cv::imshow("PO_org",img1);
+    // cv::imwrite("/home/vuong/Dev/Testing/Debug/BA_"+std::to_string(pFrame->mnId)+".png",img1);
+    cv::waitKey(1);
+#endif
     // Recover optimized pose and return number of inliers
-    g2o::VertexSE3Expmap* vSE3_recov = static_cast<g2o::VertexSE3Expmap*>(optimizer.vertex(0));
-    g2o::SE3Quat SE3quat_recov = vSE3_recov->estimate();
-    cv::Mat pose = Converter::toCvMat(SE3quat_recov);
-    pFrame->SetPose(pose);
+    if(nInitialCorrespondences-nBad>150){
+        g2o::VertexSE3Expmap* vSE3_recov = static_cast<g2o::VertexSE3Expmap*>(optimizer.vertex(0));
+        g2o::SE3Quat SE3quat_recov = vSE3_recov->estimate();
+        cv::Mat pose = Converter::toCvMat(SE3quat_recov);
+        pFrame->SetPose(pose);
+    }
 
     //cout << "[PoseOptimization]: initial correspondences-> " << nInitialCorrespondences << " --- outliers-> " << nBad << endl;
 
@@ -1409,9 +1555,9 @@ int Optimizer::PoseOptimization(Frame *pFrame)
 int Optimizer::PoseOptimizationSE2(Frame* pFrame)
 {
     // Camera Ext
-    const cv::Mat Tbc = pFrame->Tbc;
-    const cv::Mat Rbc = Tbc.rowRange(0,3).colRange(0,3);
-    const cv::Mat tbc = Tbc.rowRange(0,3).col(3);
+    // const cv::Mat Tbc = pFrame->Tbc;
+    // const cv::Mat Rbc = Tbc.rowRange(0,3).colRange(0,3);
+    // const cv::Mat tbc = Tbc.rowRange(0,3).col(3);
     
     // Setup Optimizer
     g2o::SparseOptimizer optimizer;
@@ -1428,8 +1574,8 @@ int Optimizer::PoseOptimizationSE2(Frame* pFrame)
 
     // Set Frame vertex 
     g2o::VertexSE2 * vSE2 = new g2o::VertexSE2();
-    cv::Mat Tw0b = Tbc * ((Tbc * pFrame->mTcw).inv());  // Tw0b = (Tbc * (Tbc * Tcw).inv())
-    vSE2->setEstimate(Converter::toSE2(Tw0b));
+    // cv::Mat Tw0b = Tbc * Converter::invSE3(pFrame->Tbc*pFrame->GetPose());  // Tw0b = (Tbc * (Tbc * Tcw).inv())
+    vSE2->setEstimate(Converter::toSE2(pFrame->GetOdomPose()));
     vSE2->setId(0);
     vSE2->setFixed(false);
     optimizer.addVertex(vSE2);
@@ -1468,11 +1614,12 @@ int Optimizer::PoseOptimizationSE2(Frame* pFrame)
             const float invSigma2 = pFrame->mvInvLevelSigma2[kpUn.octave];
             Eigen::Matrix2d Sigma_u = Eigen::Matrix2d::Identity() * invSigma2;
             
-            cv::Mat Tcw0 = (Tbc * pFrame->mTcw.inv()).inv();    // Tcw0 = (Tbc * Twc).inv()
+            cv::Mat Tcw0 = pFrame->mTcw*pFrame->Tcb;    // Tcw0 = Tcw * Tcb            
             Eigen::Matrix3d Rcw0 = Converter::toMatrix3d(Tcw0.rowRange(0,3).colRange(0,3));
 
-            cv::Mat vMPw0 = Rbc * pMP->GetWorldPos() + tbc;
-            Eigen::Vector3d lw0 = Converter::toVector3d(vMPw0);
+            // cv::Mat vMPw0 = Rbc * pMP->GetWorldPos() + tbc;
+            
+            Eigen::Vector3d lw0 = Converter::toSE3Quat(pFrame->Tbc).map(Converter::toVector3d(pMP->GetWorldPos()));
             Eigen::Vector3d lc = Converter::toSE3Quat(Tcw0).map(lw0);
 
             double zc = lc(2);
@@ -1486,7 +1633,7 @@ int Optimizer::PoseOptimizationSE2(Frame* pFrame)
             J_pi<< fx * zc_inv, 0, -fx*lc(0)*zc_inv_2,
                    0, fx * zc_inv, -fx*lc(1)*zc_inv_2;
             
-            Eigen::Vector3d pi(Tw0b.at<float>(0,3),Tw0b.at<float>(1,3),0);
+            Eigen::Vector3d pi(pFrame->GetOdomPose().at<float>(0,3),pFrame->GetOdomPose().at<float>(1,3),0);
 
             g2o::Matrix23d J_pi_Rcw = J_pi * Rcw0;
 
@@ -1494,10 +1641,10 @@ int Optimizer::PoseOptimizationSE2(Frame* pFrame)
 
             Eigen::Matrix<double,2,1> J_z = -J_pi_Rcw.block<2,1>(0,2);
             float Sigma_rotxy = 1./1e6;  // Plane Motion X_Rot_Info = 1e6
-            float Sigma_z = 1.;       // Plane Motion Z_Info = 1
+            float Sigma_z = 1./1e5;       // Plane Motion Z_Info = 1
 
             Eigen::Matrix2d Sigma_all = Sigma_rotxy * J_rotxy * J_rotxy.transpose() +
-                                        Sigma_z * J_z * J_z.transpose() + Sigma_u;
+                                        Sigma_z * J_z * J_z.transpose() + Sigma_u.inverse();
             
             e->setInformation(Sigma_all.inverse());
             
@@ -1515,8 +1662,8 @@ int Optimizer::PoseOptimizationSE2(Frame* pFrame)
             e->Xw[1] = Xw.at<float>(1);
             e->Xw[2] = Xw.at<float>(2);
 
-            e->Tbc = Converter::toSE3Quat(Tbc);
-            e->Tcb = Converter::toSE3Quat(Tbc.inv());
+            e->Tbc = Converter::toSE3Quat(pFrame->Tbc);
+            e->Tcb = Converter::toSE3Quat(pFrame->Tcb);
             optimizer.addEdge(e);
 
             vpEdgesMono.push_back(e);
@@ -1529,9 +1676,9 @@ int Optimizer::PoseOptimizationSE2(Frame* pFrame)
 
     KeyFrame* pKF = pFrame->mpLastKeyFrame;
     g2o::VertexSE2 * VPk = new g2o::VertexSE2();
-    cv::Mat Twc = pKF->GetPoseInverse();
-    cv::Mat Tw0bKF = Tbc * (Twc*pFrame->Tcb);  // Tw0b = (Tbc * (Tbc * Tcw).inv())
-    VPk->setEstimate(Converter::toSE2(Tw0bKF));
+    // cv::Mat Twc = pKF->GetPoseInverse();
+    // cv::Mat Tw0bKF = Tbc * (Twc*pFrame->Tcb);  // Tw0b = (Tbc * (Tbc * Tcw).inv())
+    VPk->setEstimate(Converter::toSE2(pKF->GetOdomPose()));
     VPk->setId(1);
     VPk->setFixed(true);
     optimizer.addVertex(VPk);
@@ -1548,7 +1695,7 @@ int Optimizer::PoseOptimizationSE2(Frame* pFrame)
 
     // We perform 4 optimizations, after each optimization we classify observation as inlier/outlier
     // At the next optimization, outliers are not included, but at the end they can be classified as inliers again.
-    const float chi2Mono[4]={5.991,5.991,5.991,5.991};;
+    const float chi2Mono[4]={5.991,5.991,5.991,5.991};
     const int its[4]={10,10,10,10};    
     int nBad = 0;
     int nInliersMono = 0;
@@ -1595,27 +1742,11 @@ int Optimizer::PoseOptimizationSE2(Frame* pFrame)
             break;
 
     }
-    // if(nInliersMono < 30)
-    // {
-    //     cout << "Recover not too bad points" << endl;
-    //     nBad=0;
-    //     const float chi2MonoOut = 18.f;
-    //     g2o::EdgeSE2XYZOnlyPose* e1;
-    //     for(size_t i=0, iend=vnIndexEdgeMono.size(); i<iend; i++)
-    //     {
-    //         const size_t idx = vnIndexEdgeMono[i];
-    //         e1 = vpEdgesMono[i];
-    //         e1->computeError();
-    //         if (e1->chi2()<chi2MonoOut)
-    //             pFrame->mvbOutlier[idx]=false;
-    //         else
-    //             nBad++;
-    //     }
-    // }
     // Recover optimized pose and return number of inliers
     g2o::VertexSE2* vSE2_recov = static_cast<g2o::VertexSE2*>(optimizer.vertex(0));
-    cv::Mat vSE2_w0 = vSE2_recov->estimate().toCvSE3();
-    pFrame->SetPose((Tbc.inv() * (vSE2_w0 * Tbc)).inv()); // vcw = (Tcb * (vw0b * Tbc)).inv()
+    cv::Mat vw0b = vSE2_recov->estimate().toCvSE3();
+    cv::Mat Twc = pFrame->Tcb * vw0b * pFrame->Tbc;
+    pFrame->SetPose(Converter::invSE3(Twc)); // vcw = (Tcb * (vw0b * Tbc)).inv()
 
     return nInitalCorrespondences - nBad;
 }
@@ -2888,6 +3019,7 @@ void Optimizer::LocalBundleAdjustmentSE2(KeyFrame* pKF, bool *pbStopFlag, Map *p
     g2o::BlockSolverX* solver_ptr = new g2o::BlockSolverX(linearSolver);
     
     g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
+    solver->setUserLambdaInit(1e0);
     optimizer.setAlgorithm(solver);
 
     if(pbStopFlag)
@@ -3157,12 +3289,12 @@ void Optimizer::LocalBundleAdjustmentSE2(KeyFrame* pKF, bool *pbStopFlag, Map *p
 
 void Optimizer::LocalOdomBA(KeyFrame* pKF, bool *pbStopFlag, Map *pMap, int& num_fixedKF)
 {
-    const cv::Mat Tbc = pKF->Tbc;
-    const cv::Mat Rbc = Tbc.rowRange(0,3).colRange(0,3);
-    const cv::Mat tbc = Tbc.rowRange(0,3).col(3);
+    // const cv::Mat Tbc = pKF->Tbc;
+    // const cv::Mat Rbc = Tbc.rowRange(0,3).colRange(0,3);
+    // const cv::Mat tbc = Tbc.rowRange(0,3).col(3);
     Map* pCurrentMap = pKF->GetMap();
 
-    int maxOpt=10;
+    int maxOpt=25;
     int opt_it=10;
 
     const int Nd = maxOpt;
@@ -3222,36 +3354,6 @@ void Optimizer::LocalOdomBA(KeyFrame* pKF, bool *pbStopFlag, Map *pMap, int& num
         vpOptimizableKFs.pop_back();
     }
 
-    // // Optimizable visual KFs
-    // const int maxCovKF = 0;
-    // for(int i=0, iend=vpNeighsKFs.size(); i<iend; i++)
-    // {
-    //     if(lpOptVisKFs.size() >= maxCovKF)
-    //         break;
-
-    //     KeyFrame* pKFi = vpNeighsKFs[i];
-    //     if(pKFi->mnBALocalForKF == pKF->mnId || pKFi->mnBAFixedForKF == pKF->mnId)
-    //         continue;
-    //     pKFi->mnBALocalForKF = pKF->mnId;
-    //     if(!pKFi->isBad() && pKFi->GetMap() == pCurrentMap)
-    //     {
-    //         lpOptVisKFs.push_back(pKFi);
-
-    //         vector<MapPoint*> vpMPs = pKFi->GetMapPointMatches();
-    //         for(vector<MapPoint*>::iterator vit=vpMPs.begin(), vend=vpMPs.end(); vit!=vend; vit++)
-    //         {
-    //             MapPoint* pMP = *vit;
-    //             if(pMP)
-    //                 if(!pMP->isBad())
-    //                     if(pMP->mnBALocalForKF!=pKF->mnId)
-    //                     {
-    //                         lLocalMapPoints.push_back(pMP);
-    //                         pMP->mnBALocalForKF=pKF->mnId;
-    //                     }
-    //         }
-    //     }
-    // }
-
     // Fixed KFs which are not covisible optimizable
     const int maxFixKF = 200;
 
@@ -3296,10 +3398,10 @@ void Optimizer::LocalOdomBA(KeyFrame* pKF, bool *pbStopFlag, Map *pMap, int& num
     {
         KeyFrame* pKFi = vpOptimizableKFs[i];
         g2o::VertexSE2 * vSE2 = new g2o::VertexSE2();
-        cv::Mat Tcw = pKFi->GetPose();
-        cv::Mat Tw0b = Tbc * (Tbc * Tcw).inv();
+        // cv::Mat Tcw = pKFi->GetPose();
+        // cv::Mat Tw0b = Tbc * (Tbc * Tcw).inv();
 
-        vSE2->setEstimate(Converter::toSE2(Tw0b));
+        vSE2->setEstimate(Converter::toSE2(pKFi->GetOdomPose()));
         vSE2->setId(pKFi->mnId);
         vSE2->setFixed(false);
         optimizer.addVertex(vSE2);
@@ -3310,9 +3412,9 @@ void Optimizer::LocalOdomBA(KeyFrame* pKF, bool *pbStopFlag, Map *pMap, int& num
     {
         KeyFrame* pKFi = *lit;
         g2o::VertexSE2* vSE2 = new g2o::VertexSE2();
-        cv::Mat Tcw = pKFi->GetPose();
-        cv::Mat Tw0b = Tbc * (Tbc * Tcw).inv();
-        vSE2->setEstimate(Converter::toSE2(Tw0b));
+        // cv::Mat Tcw = pKFi->GetPose();
+        // cv::Mat Tw0b = Tbc * (Tbc * Tcw).inv();
+        vSE2->setEstimate(Converter::toSE2(pKFi->GetOdomPose()));
         vSE2->setId(pKFi->mnId);
         vSE2->setFixed(true);
         optimizer.addVertex(vSE2);
@@ -3338,7 +3440,7 @@ void Optimizer::LocalOdomBA(KeyFrame* pKF, bool *pbStopFlag, Map *pMap, int& num
         //Output the measurements and error TODO
 
         veo[i]->setMeasurement(pKFi->mpOdomPreintegrated->meas);
-        veo[i]->setInformation(pKFi->mpOdomPreintegrated->cov.inverse()); // check
+        veo[i]->setInformation(pKFi->mpOdomPreintegrated->cov.inverse()); // check->correct
 
         if(optimizer.vertex(pKFi->mnId) == NULL || optimizer.vertex(pKFiPrev->mnId) == NULL)
                 continue;
@@ -3364,10 +3466,11 @@ void Optimizer::LocalOdomBA(KeyFrame* pKF, bool *pbStopFlag, Map *pMap, int& num
     {
         MapPoint* pMP = *lit;
         g2o::VertexSBAPointXYZ* vpPoint = new g2o::VertexSBAPointXYZ();
-        cv::Mat point_pose = pMP->GetWorldPos();
+        // cv::Mat point_pose = pMP->GetWorldPos();
         //std::cout << point_pose << std::endl;
-        cv::Mat point_pose_world = Rbc * point_pose + tbc; 
-        vpPoint->setEstimate(Converter::toVector3d(point_pose_world));                  // TODO: is this map point is in BODY world coordinate?
+        // cv::Mat point_pose_world = Rbc * point_pose + tbc;
+        Eigen::Vector3d lw0 = Converter::toSE3Quat(pKF->Tbc).map(Converter::toVector3d(pMP->GetWorldPos())); 
+        vpPoint->setEstimate(lw0);
         unsigned long id = pMP->mnId+iniMPid+1;
         vpPoint->setId(id);
         vpPoint->setMarginalized(true);
@@ -3401,25 +3504,25 @@ void Optimizer::LocalOdomBA(KeyFrame* pKF, bool *pbStopFlag, Map *pMap, int& num
                 const float &invSigma2 = pKFi->mvInvLevelSigma2[kpUn.octave];
                 Eigen::Matrix2d Sigma_u = Eigen::Matrix2d::Identity() * invSigma2;
                 
-                cv::Mat Tcw = pKFi->GetPose();
-                cv::Mat Tw0b = Tbc * (Tbc * Tcw).inv();
-                cv::Mat Tcw0 = (Tbc *  Tcw.inv()).inv();
+                // cv::Mat Tcw = pKFi->GetPose();
+                // cv::Mat Tw0b = pKFi->GetOdomPose();
+                cv::Mat Tcw0 = pKFi->GetPose()*pKFi->Tcb;  // (Tbc *  Tcw.inv()).inv();
                 Eigen::Matrix3d Rcw0 = Converter::toMatrix3d(Tcw0.rowRange(0,3).colRange(0,3));
 
-                Eigen::Vector3d lw0 = Converter::toVector3d(point_pose_world);
+                // Eigen::Vector3d lw0 = Converter::toVector3d(point_pose_world);
                 Eigen::Vector3d lc = Converter::toSE3Quat(Tcw0).map(lw0);
                 
-                double zc = lc(2);
-                double zc_inv = 1. / zc;
-                double zc_inv_2 = zc_inv * zc_inv;
+                // double zc = lc(2);
+                // double zc_inv = 1. / zc;
+                // double zc_inv_2 = zc_inv * zc_inv;
 
-                g2o::Matrix23d J_pi;
-                const float fx = pKFi->fx;
-                J_pi<< fx * zc_inv, 0, -fx*lc(0)*zc_inv_2,
-                    0, fx * zc_inv, -fx*lc(1)*zc_inv_2;
+                // g2o::Matrix23d J_pi;
+                // const float fx = pKFi->fx;
+                // J_pi<< fx * zc_inv, 0, -fx*lc(0)*zc_inv_2,
+                    // 0, fx * zc_inv, -fx*lc(1)*zc_inv_2;
                 
-                Eigen::Vector3d pi(Tw0b.at<float>(0,3),Tw0b.at<float>(1,3),0);
-                g2o::Matrix23d J_pi_Rcw = J_pi * Rcw0;
+                Eigen::Vector3d pi(pKFi->GetOdomPose().at<float>(0,3),pKFi->GetOdomPose().at<float>(1,3),0);
+                g2o::Matrix23d J_pi_Rcw = pKFi->mpCamera->projectJac(lc) * Rcw0;
 
                 Eigen::Matrix2d J_rotxy = (J_pi_Rcw * Converter::skew(lw0-pi)).block<2,2>(0,0);
                 Eigen::Matrix<double,2,1> J_z = -J_pi_Rcw.block<2,1>(0,2);
@@ -3435,14 +3538,16 @@ void Optimizer::LocalOdomBA(KeyFrame* pKF, bool *pbStopFlag, Map *pMap, int& num
                 e->setRobustKernel(rk);
                 rk->setDelta(thHuberMono);
 
-                e->fx = pKFi->fx;
-                e->fy = pKFi->fy;
-                e->cx = pKFi->cx;
-                e->cy = pKFi->cy;
+                // e->fx = pKFi->fx;
+                // e->fy = pKFi->fy;
+                // e->cx = pKFi->cx;
+                // e->cy = pKFi->cy;
                 
-                e->Tbc = Converter::toSE3Quat(Tbc);
-                e->Tcb = Converter::toSE3Quat(Tbc.inv());
+                e->pCamera = pKFi->mpCamera;
 
+                e->Tbc = Converter::toSE3Quat(pKFi->Tbc);
+                e->Tcb = Converter::toSE3Quat(pKFi->Tcb);
+                
                 optimizer.addEdge(e);
                 vpEdgesMono.push_back(e);
                 vpEdgesKFMono.push_back(pKFi);
@@ -3475,7 +3580,7 @@ void Optimizer::LocalOdomBA(KeyFrame* pKF, bool *pbStopFlag, Map *pMap, int& num
         // Tbw = SE2ToSE3(currKF->estimate().inverse());
         g2o::SE3Quat Tcw = vpEdgesMono[i]->Tcb * Tbw;
         Eigen::Vector3d lc = Tcw.map(vPoint->estimate());
-        auto eigProj = vpEdgesMono[i]->cam_project(lc);
+        auto eigProj =pKF->mpCamera->project(lc);
         cv::Point2f pProj(eigProj.x(),eigProj.y());
 
         cv::circle(img,pMeas,3,CV_RGB(0,255,0),-1);
@@ -3533,7 +3638,7 @@ void Optimizer::LocalOdomBA(KeyFrame* pKF, bool *pbStopFlag, Map *pMap, int& num
         // g2o::SE3Quat Tbw = SE2ToSE3(currKF->estimate().inverse());
         g2o::SE3Quat Tcw = vpEdgesMono[i]->Tcb * Tbw;
         Eigen::Vector3d lc = Tcw.map(vPoint->estimate());
-        auto eigProj = vpEdgesMono[i]->cam_project(lc);
+        auto eigProj = pKF->mpCamera->project(lc);
         cv::Point2f pProj(eigProj.x(),eigProj.y());
 
         cv::circle(img1,pMeas,3,CV_RGB(0,255,0),-1);
@@ -3564,8 +3669,11 @@ void Optimizer::LocalOdomBA(KeyFrame* pKF, bool *pbStopFlag, Map *pMap, int& num
         {
             KeyFrame* pKFi = vpEdgesKFMono[i];
             vToErase.push_back(make_pair(pKFi,pMP));
-        }
+        }    
     }
+
+    // Get Map Mutex
+    unique_lock<mutex> lock(pMap->mMutexMapUpdate);
     // Check the inlier obsevations
     if(!vToErase.empty())
     {
@@ -3589,8 +3697,9 @@ void Optimizer::LocalOdomBA(KeyFrame* pKF, bool *pbStopFlag, Map *pMap, int& num
         KeyFrame* pKF = vpOptimizableKFs[i];
         g2o::VertexSE2* vSE2 = static_cast<g2o::VertexSE2*>(optimizer.vertex(pKF->mnId));
         cv::Mat vw0b = vSE2->estimate().toCvSE3();
-        cv::Mat pose = (Tbc.inv() * (vw0b * Tbc)).inv();                         // Tcw = (Tcb * (vw0b * Tbc)).inv()
-        pKF->SetPose(pose);
+        // cv::Mat pose = (Tbc.inv() * (vw0b * Tbc)).inv();                         // Tcw = (Tcb * (vw0b * Tbc)).inv()
+        cv::Mat Pose_Inverse = pKF->Tcb * vw0b * pKF->Tbc;
+        pKF->SetPose(Converter::invSE3(Pose_Inverse));
         pKF->mnBALocalForKF=0;
     }
 
@@ -3600,8 +3709,9 @@ void Optimizer::LocalOdomBA(KeyFrame* pKF, bool *pbStopFlag, Map *pMap, int& num
         KeyFrame* pKF = *lit;
         g2o::VertexSE2* vSE2 = static_cast<g2o::VertexSE2*>(optimizer.vertex(pKF->mnId));
         cv::Mat vw0b = vSE2->estimate().toCvSE3();
-        cv::Mat pose = (Tbc.inv() * (vw0b * Tbc)).inv();                         // Tcw = (Tcb * (vw0b * Tbc)).inv()
-        pKF->SetPose(pose);
+        // cv::Mat pose = (Tbc.inv() * (vw0b * Tbc)).inv();                         // Tcw = (Tcb * (vw0b * Tbc)).inv()
+        cv::Mat Pose_Inverse = pKF->Tcb * vw0b * pKF->Tbc;
+        pKF->SetPose(Converter::invSE3(Pose_Inverse));
         pKF->mnBALocalForKF=0;
     }
     
@@ -3610,8 +3720,8 @@ void Optimizer::LocalOdomBA(KeyFrame* pKF, bool *pbStopFlag, Map *pMap, int& num
     {
         MapPoint* pMP = *lit;
         g2o::VertexSBAPointXYZ* vPoint = static_cast<g2o::VertexSBAPointXYZ*>(optimizer.vertex(pMP->mnId+iniMPid+1));
-        cv::Mat vMPw0 = Converter::toCvMat(vPoint->estimate());
-        cv::Mat vMP = Rbc.inv() * (vMPw0 - tbc);
+        // cv::Mat vMPw0 = Converter::toCvMat(vPoint->estimate());
+        cv::Mat vMP = Converter::toCvMat(Converter::toSE3Quat(pKF->Tcb).map(vPoint->estimate())); //Rbc.inv() * (vMPw0 - tbc);
         //std::cout << "Pose MapPoint " << pMP->mnId << "in cam system " << std::endl << vMP << std::endl;
         pMP->SetWorldPos(vMP);
         pMP->UpdateNormalAndDepth();

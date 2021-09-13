@@ -169,7 +169,7 @@ public:
 
     bool mbWriteStats;
 
-    g2o::SE3Quat mOdom;
+    g2o::SE2 mOdom;
 protected:
 
     // Main tracking function. It is independent of the input sensor.

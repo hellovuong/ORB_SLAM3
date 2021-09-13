@@ -52,7 +52,7 @@ Frame::Frame(): mpcpi(NULL), mpImuPreintegrated(NULL), mpPrevFrame(NULL), mpImuP
 //Copy Constructor
 Frame::Frame(const Frame &frame)
     :mpcpi(frame.mpcpi),mpORBvocabulary(frame.mpORBvocabulary), mpORBextractorLeft(frame.mpORBextractorLeft), mpORBextractorRight(frame.mpORBextractorRight),
-     mTimeStamp(frame.mTimeStamp), mK(frame.mK.clone()), mDistCoef(frame.mDistCoef.clone()),
+     mTimeStamp(frame.mTimeStamp), mK(frame.mK.clone()), mDistCoef(frame.mDistCoef.clone()),imgLeft(frame.imgLeft.clone()),
      mbf(frame.mbf), mb(frame.mb), mThDepth(frame.mThDepth), N(frame.N), mvKeys(frame.mvKeys),
      mvKeysRight(frame.mvKeysRight), mvKeysUn(frame.mvKeysUn), mvuRight(frame.mvuRight),
      mvDepth(frame.mvDepth), mBowVec(frame.mBowVec), mFeatVec(frame.mFeatVec),
@@ -70,6 +70,7 @@ Frame::Frame(const Frame &frame)
 {
     // OUR
     frame.Tbc.copyTo(Tbc);
+    frame.Tcb.copyTo(Tcb);
     odom = frame.odom;
     mOdom = frame.mOdom;
     for(int i=0;i<FRAME_GRID_COLS;i++)
@@ -562,6 +563,13 @@ cv::Mat Frame::GetImuPose()
     return Twb.clone();
 }
 
+cv::Mat Frame::GetOdomPose()
+{
+    cv::Mat Tw0b = cv::Mat::eye(4,4,CV_32F);
+    cv::Mat Twc = Converter::invSE3(mTcw);
+    Tw0b = Tbc * Twc * Tcb;
+    return Tw0b.clone(); 
+}
 
 bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
 {

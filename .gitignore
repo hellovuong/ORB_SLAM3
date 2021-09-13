@@ -49,16 +49,15 @@ cmake-build-debug/
 *.osa
 vis/
 vis_0
-
+other/
+.vscode/
 
 KeyFrameTrajectory_body.txt
 KeyFrameTrajectory_cam.txt
 open_loris_odom.sh
-.vscode/settings.json
 Examples/Monocular-Inertial/mono_inertial_sber
 Examples/Monocular-Odom/mono_odom
 Examples/Monocular-Odom/mono_odom_openloris
 Examples/Monocular-Odom/mono_odom_sber
 Examples/Monocular-Odom/mono_odom_zed2
-.vscode/launch.json
 Examples/Monocular-Inertial/mono_inertial_sber

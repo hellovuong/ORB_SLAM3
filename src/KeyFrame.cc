@@ -73,6 +73,7 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
 
         odom = F.odom;
         F.Tbc.copyTo(Tbc);
+        F.Tcb.copyTo(Tcb);
 #endif
     imgLeft = F.imgLeft.clone();
     imgRight = F.imgRight.clone();
@@ -190,6 +191,12 @@ cv::Mat KeyFrame::GetImuPose()
 {
     unique_lock<mutex> lock(mMutexPose);
     return Twc*mImuCalib.Tcb;
+}
+
+cv::Mat KeyFrame::GetOdomPose()
+{
+    unique_lock<mutex> lock(mMutexPose);
+    return Tbc*Twc*Tcb;
 }
 
 cv::Mat KeyFrame::GetRotation()
@@ -440,7 +447,7 @@ void KeyFrame::UpdateConnections(bool upParent)
     // This should not happen
     if(KFcounter.empty()) {
         std::cout<<"This should not happen"<<std::endl;
-        // return; // SE2_EDIT
+        return; // SE2_EDIT
     }    
     
     // OUR 
@@ -484,9 +491,9 @@ void KeyFrame::UpdateConnections(bool upParent)
 
     if(vPairs.empty())
     {
-// #ifdef ODOM
-//         if(pKFmax)
-// #endif
+#ifdef ODOM
+        if(pKFmax)
+#endif
         {
             vPairs.push_back(make_pair(nmax,pKFmax));
             pKFmax->AddConnection(this,nmax);
