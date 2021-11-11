@@ -5,10 +5,10 @@ Usage Mono Odom:
 ./mono_odom path_to_vocabulary path_to_settings path_to_sequence (name_sequence)
 ```
 Notice that you need to copy odom data file in folder `/Examples/Monocular-Odom/OpenLoris_Odom` to OpenLoris folder and change the name of odom file to `odom_interp.txt`
-Result on OpenLoris datasets:
+Result:
 
-<a> <img src="doc/home_seq.png" 
-alt="home" width="480" height="360" border="5" /></a>
+<a> <img src="res.png" 
+alt="ATE" width="720" height="480" border="5" /></a>
 ### V0.3: Beta version, 4 Sep 2020
 **Authors:** Carlos Campos, Richard Elvira, Juan J. Gómez Rodríguez, [José M. M. Montiel](http://webdiis.unizar.es/~josemari/), [Juan D. Tardos](http://webdiis.unizar.es/~jdtardos/).
 
