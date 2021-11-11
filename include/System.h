@@ -88,7 +88,8 @@ public:
         RGBD=2,
         IMU_MONOCULAR=3,
         IMU_STEREO=4, 
-        ODOM_MONOCULAR=5
+        ODOM_MONOCULAR=5,
+        ODOM_RGBD=6
     };
 
     // File type
@@ -111,14 +112,14 @@ public:
     // Input image: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
     // Input depthmap: Float (CV_32F).
     // Returns the camera pose (empty if tracking fails).
-    cv::Mat TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const double &timestamp, string filename="");
+    cv::Mat TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const double &timestamp, const g2o::SE2 &odo = g2o::SE2(), string filename="");
 
     // Proccess the given monocular frame and optionally imu data
     // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
     // Returns the camera pose (empty if tracking fails).
     cv::Mat TrackMonocular(const cv::Mat &im, const double &timestamp, const vector<IMU::Point>& vImuMeas = vector<IMU::Point>(), string filename="");
 
-    cv::Mat TrackOdomMono(const cv::Mat &im, const g2o::SE2 &odo, const double timestamp, string filename=""); // OUR
+    cv::Mat TrackOdomMono(const cv::Mat &im, const g2o::SE2 &odo, const double timestamp, const g2o::SE3Quat &odo_ = g2o::SE3Quat(), string filename=""); // OUR
 
     // This stops local mapping thread (map building) and performs only camera tracking.
     void ActivateLocalizationMode();
@@ -149,8 +150,9 @@ public:
     // Call first Shutdown()
     // See format details at: http://vision.in.tum.de/data/datasets/rgbd-dataset
     void SaveKeyFrameTrajectoryTUM(const string &filename);
-    void SavePoseKeyFrameTrajectoryTUM(const string &filename); //  OUR
-
+    void SaveBodyKeyFrameTrajectoryTUM(const string &filename); //  OUR
+    void SaveBodyTrajectoryTUM(const string &filename);
+    
     void SaveTrajectoryEuRoC(const string &filename);
     void SaveKeyFrameTrajectoryEuRoC(const string &filename);
 

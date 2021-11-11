@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8...3.20)
 project(ORB_SLAM3)
 
 IF(NOT CMAKE_BUILD_TYPE)
@@ -85,6 +85,7 @@ src/CameraModels/KannalaBrandt8.cpp
 src/OptimizableTypes.cpp
 src/MLPnPsolver.cpp
 src/EdgeSE2XYZ.cpp
+src/OdomTypes.cc
 include/System.h
 include/Tracking.h
 include/LocalMapping.h
@@ -114,6 +115,7 @@ include/OptimizableTypes.h
 include/MLPnPsolver.h
 include/TwoViewReconstruction.h
 include/EdgeSE2XYZ.h
+include/OdomTypes.h
 src/TwoViewReconstruction.cc)
 
 add_subdirectory(Thirdparty/g2o)
@@ -188,6 +190,18 @@ add_executable(mono_odom_sber
 Examples/Monocular-Odom/mono_odom_sber.cc)
 target_link_libraries(mono_odom_sber ${PROJECT_NAME})
 
+add_executable(mono_odom_openloris
+Examples/Monocular-Odom/mono_odom_openloris.cc)
+target_link_libraries(mono_odom_openloris ${PROJECT_NAME})
+
+add_executable(mono_odom_openloris_t265
+Examples/Monocular-Odom/mono_odom_openloris_t265.cc)
+target_link_libraries(mono_odom_openloris_t265 ${PROJECT_NAME})
+
+add_executable(mono_odom_zed2
+Examples/Monocular-Odom/mono_odom_zed2.cc)
+target_link_libraries(mono_odom_zed2 ${PROJECT_NAME})
+
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Monocular-Inertial)
 
 add_executable(mono_inertial_euroc
@@ -202,6 +216,10 @@ add_executable(mono_inertial_openloris
 Examples/Monocular-Inertial/mono_inertial_openloris.cc)
 target_link_libraries(mono_inertial_openloris ${PROJECT_NAME})
 
+add_executable(mono_inertial_sber
+Examples/Monocular-Inertial/mono_inertial_sber.cc)
+target_link_libraries(mono_inertial_sber ${PROJECT_NAME})
+
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Stereo-Inertial)
 
 add_executable(stereo_inertial_euroc
@@ -213,4 +231,8 @@ add_executable(stereo_inertial_tum_vi
 Examples/Stereo-Inertial/stereo_inertial_tum_vi.cc)
 target_link_libraries(stereo_inertial_tum_vi ${PROJECT_NAME})
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/RGB-D-Odom)
+add_executable(rgbd_odom
+Examples/RGB-D-Odom/rgbd_odom_openloris.cc)
+target_link_libraries(rgbd_odom ${PROJECT_NAME})
 

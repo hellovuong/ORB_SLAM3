@@ -226,7 +226,7 @@ bool Converter::isRotationMatrix(const cv::Mat &R)
 
 std::vector<float> Converter::toEuler(const cv::Mat &R)
 {
-    assert(isRotationMatrix(R));
+    // assert(isRotationMatrix(R));
     float sy = sqrt(R.at<float>(0,0) * R.at<float>(0,0) +  R.at<float>(1,0) * R.at<float>(1,0) );
 
     bool singular = sy < 1e-6; // If
@@ -252,5 +252,17 @@ std::vector<float> Converter::toEuler(const cv::Mat &R)
 
     return v_euler;
 }
+
+cv::Mat Converter::invSE3(const cv::Mat &SE3)
+{
+    cv::Mat R = SE3.colRange(0,3).rowRange(0,3);
+    cv::Mat R_t = R.t();
+    cv::Mat invSE3 = cv::Mat::eye(4, 4, SE3.type());
+    R_t.copyTo(invSE3.rowRange(0,3).colRange(0,3));
+    cv::Mat t_inv = -R_t*SE3.rowRange(0,3).col(3);
+    t_inv.copyTo(invSE3.rowRange(0,3).col(3));
+    
+    return invSE3;
+} 
 
 } //namespace ORB_SLAM

@@ -23,6 +23,7 @@
 #include "Thirdparty/g2o/g2o/types/types_six_dof_expmap.h"
 #include "Thirdparty/g2o/g2o/types/vertex_se2.h"
 #include "Thirdparty/g2o/g2o/types/se2.h"
+#include <include/CameraModels/GeometricCamera.h>
 
 #define CUSTOMIZE_JACOBIAN_SE2XYZ
 
@@ -45,30 +46,20 @@ public:
     EdgeSE2XYZ();
     ~EdgeSE2XYZ();
 
-    // Useless functions we don't care
     virtual bool read(std::istream &is);
     virtual bool write(std::ostream &os) const;
 
-
-    // Note: covariance are set here. Just set information to identity outside.
     void computeError();
 
     bool isDepthPositive();
 
     virtual void linearizeOplus();
 
-    // inline void setCameraParameter(g2o::CameraParameters* _cam){cam = _cam;} // deprecated in ORB_SLAM2 framework
-
-    //inline void setExtParameter(const g2o::SE3Quat& _Tbc) { Tbc = _Tbc; Tcb = Tbc.inverse(); } // deprecated in ORB_SLAM2 framework
     Vector2d cam_project(const Vector3d & trans_xyz) const;
 
+    ORB_SLAM3::GeometricCamera* pCamera;
     double fx, fy, cx, cy;
     g2o::SE3Quat Tcb, Tbc;
-// private:
-//     g2o::SE3Quat Tbc; 
-//     g2o::SE3Quat Tcb;
-
-//     g2o::CameraParameters * cam;
 };
 
 class EdgeSE2XYZOnlyPose : public g2o::BaseUnaryEdge<2, Vector2d, g2o::VertexSE2>
@@ -87,7 +78,9 @@ public:
 
     Vector2d cam_project(const Vector3d & trans_xyz) const;
     bool isDepthPositive();
+    
     Vector3d Xw;
+    ORB_SLAM3::GeometricCamera* pCamera;
     double fx, fy, cx, cy;
     g2o::SE3Quat Tcb, Tbc;
 };

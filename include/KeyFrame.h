@@ -298,6 +298,7 @@ public:
     cv::Mat GetTranslation();
     cv::Mat GetVelocity();
 
+    cv::Mat GetOdomPose();
     // Bag of Words Representation
     void ComputeBoW();
 
@@ -394,6 +395,7 @@ public:
     std::pair<KeyFrame*, PreSE2> odomFromThis;// OUR
     g2o::SE2 odom;// OUR
     cv::Mat Tbc;// OUR
+    cv::Mat Tcb;
     static long unsigned int nNextId;
     long unsigned int mnId;
     const long unsigned int mnFrameId;
@@ -502,7 +504,9 @@ public:
     IMU::Preintegrated* mpImuPreintegrated;
     IMU::Calib mImuCalib;
 
-
+    // Preintegrated WOdometry measurements from previous keyframe
+    ODOM::Preintegrated* mpOdomPreintegrated;
+    
     unsigned int mnOriginMapId;
 
     string mNameFile;

@@ -28,7 +28,7 @@
 #include<mutex>
 #include<thread>
 
-
+#define ODOM
 namespace ORB_SLAM3
 {
 
@@ -104,8 +104,8 @@ void LoopClosing::Run()
                                 continue;
                             }
                             // If inertial, force only yaw
-                            if ((mpTracker->mSensor==System::IMU_MONOCULAR ||mpTracker->mSensor==System::IMU_STEREO) &&
-                                   mpCurrentKF->GetMap()->GetIniertialBA1()) // TODO, maybe with GetIniertialBA1
+                            if (((mpTracker->mSensor==System::IMU_MONOCULAR ||mpTracker->mSensor==System::IMU_STEREO) &&
+                                   mpCurrentKF->GetMap()->GetIniertialBA1()) || mpTracker->mSensor==System::ODOM_MONOCULAR) // TODO, maybe with GetIniertialBA1
                             {
                                 Eigen::Vector3d phi = LogSO3(mSold_new.rotation().toRotationMatrix());
                                 phi(0)=0;
@@ -185,8 +185,8 @@ void LoopClosing::Run()
                             if(mpCurrentKF->GetMap()->IsInertial())
                             {
                                 // If inertial, force only yaw
-                                if ((mpTracker->mSensor==System::IMU_MONOCULAR ||mpTracker->mSensor==System::IMU_STEREO) &&
-                                        mpCurrentKF->GetMap()->GetIniertialBA2()) // TODO, maybe with GetIniertialBA1
+                                if (((mpTracker->mSensor==System::IMU_MONOCULAR ||mpTracker->mSensor==System::IMU_STEREO) &&
+                                        mpCurrentKF->GetMap()->GetIniertialBA2()) || mpTracker->mSensor==System::ODOM_MONOCULAR) // TODO, maybe with GetIniertialBA1
                                 {
                                     phi(0)=0;
                                     phi(1)=0;
@@ -601,6 +601,9 @@ bool LoopClosing::DetectCommonRegionsFromBoW(std::vector<KeyFrame*> &vpBowCand, 
 
         // Current KF against KF with covisibles version
         std::vector<KeyFrame*> vpCovKFi = pKFi->GetBestCovisibilityKeyFrames(nNumCovisibles);
+        if(vpCovKFi.empty())
+            continue;
+        
         vpCovKFi.push_back(vpCovKFi[0]);
         vpCovKFi[0] = pKFi;
 
@@ -1715,6 +1718,12 @@ void LoopClosing::MergeLocal()
         Verbose::PrintMess("MERGE-VISUAL: Visual-Inertial", Verbose::VERBOSITY_DEBUG);
         Optimizer::MergeInertialBA(mpLocalMapper->GetCurrKF(),mpMergeMatchedKF,&bStop, mpCurrentKF->GetMap(),vCorrectedSim3);
     }
+    else if(mpTracker->mSensor==System::ODOM_MONOCULAR)
+    {
+        Verbose::PrintMess("MERGE-VISUAL: Visual", Verbose::VERBOSITY_DEBUG);
+        Verbose::PrintMess("MERGE-VISUAL: Local current window->" + to_string(vpLocalCurrentWindowKFs.size()) + "; Local merge window->" + to_string(vpMergeConnectedKFs.size()), Verbose::VERBOSITY_DEBUG);
+        // Optimizer::LocalBundleAdjustmentSE2(mpCurrentKF, vpLocalCurrentWindowKFs, vpMergeConnectedKFs,&bStop);
+    }
     else
     {
         Verbose::PrintMess("MERGE-VISUAL: Visual", Verbose::VERBOSITY_DEBUG);
@@ -2433,8 +2442,10 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
 
     const bool bImuInit = pActiveMap->isImuInitialized();
 
-    if(!bImuInit)
+    if(!bImuInit && mpTracker->mSensor!=System::ODOM_MONOCULAR)
         Optimizer::GlobalBundleAdjustemnt(pActiveMap,10,&mbStopGBA,nLoopKF,false);
+    else if(!bImuInit && mpTracker->mSensor==System::ODOM_MONOCULAR)
+        Optimizer::GlobalBundleAdjustemntSE2(pActiveMap,10,&mbStopGBA,nLoopKF,false);
     else
         Optimizer::FullInertialBA(pActiveMap,7,false,nLoopKF,&mbStopGBA);
 

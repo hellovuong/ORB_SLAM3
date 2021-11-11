@@ -27,8 +27,9 @@
 #include "Thirdparty/DBoW2/DBoW2/BowVector.h"
 #include "Thirdparty/DBoW2/DBoW2/FeatureVector.h"
 #include "Thirdparty/g2o/g2o/types/se2.h"
-
+#include "Thirdparty/g2o/g2o/types/se3quat.h"
 #include "ImuTypes.h"
+#include "OdomTypes.h"
 #include "ORBVocabulary.h"
 
 #include <mutex>
@@ -115,6 +116,8 @@ public:
     cv::Mat GetImuRotation();
     cv::Mat GetImuPose();
 
+    cv::Mat GetOdomPose();
+
     void SetNewBias(const IMU::Bias &b);
 
     // Check if a MapPoint is in the frustum of the camera
@@ -150,6 +153,10 @@ public:
 public:
     // Odometry measurement
     g2o::SE2 odom; // OUR
+    g2o::SE3Quat mOdom;
+    // Odometry preintegration from last Keyframe
+    ODOM::Preintegrated* mpOdomPreintegrated;
+
     //int mSensor;
     // Extrinsic parameter
     cv::Mat Tbc; //OUR

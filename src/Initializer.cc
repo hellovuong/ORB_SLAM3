@@ -34,12 +34,13 @@ Initializer::Initializer(const Frame &ReferenceFrame, float sigma, int iteration
     mpCamera = ReferenceFrame.mpCamera;
     mK = ReferenceFrame.mK.clone();
 
-    mvKeys1 = ReferenceFrame.mvKeysUn;
+    mvKeys1Un = ReferenceFrame.mvKeys;
 
     mSigma = sigma;
     mSigma2 = sigma*sigma;
     mMaxIterations = iterations;
     odom1 = ReferenceFrame.odom;
+    ReferenceFrame.Tbc.copyTo(Tbc);
 }
 
 bool Initializer::Initialize(const Frame &CurrentFrame, const vector<int> &vMatches12, cv::Mat &R21, cv::Mat &t21,
@@ -138,9 +139,32 @@ bool Initializer::InitializeWithOdom(const Frame &CurrentFrame, const vector<int
 {
     // Fill structures with current keypoints and matches with reference frame
     // Reference Frame: 1, Current Frame: 2
-    mvKeys2 = CurrentFrame.mvKeysUn;
+    mvKeys2 = CurrentFrame.mvKeys;
+    mvKeys1 = mvKeys1Un;
+    mK = mpCamera->toK();
+    // cout << mK << endl;
+    if(mpCamera->GetType() == mpCamera->CAM_FISHEYE)
+    {
+        //Correct FishEye distortion
+        // std::vector<cv::KeyPoint> vKeysUn1 = mvKeys1, vKeysUn2 = mvKeys2;
+        std::vector<cv::Point2f> vPts1(mvKeys1.size()), vPts2(mvKeys2.size());
+
+        for(size_t i = 0; i < mvKeys1.size(); i++) vPts1[i] = mvKeys1[i].pt;
+        for(size_t i = 0; i < mvKeys2.size(); i++) vPts2[i] = mvKeys2[i].pt;
+
+        cv::Mat D = (cv::Mat_<float>(4,1) << mpCamera->getParameter(4), mpCamera->getParameter(5), mpCamera->getParameter(6), mpCamera->getParameter(7));
+        cv::Mat R = cv::Mat::eye(3,3,CV_32F);
+        //cout << "D:" << endl << D << endl;
+        //std::cout<<"K"<<std::endl;
+        //std::cout<<mK<<std::endl;
+        cv::fisheye::undistortPoints(vPts1,vPts1,mK,D,R,mK);
+        cv::fisheye::undistortPoints(vPts2,vPts2,mK,D,R,mK);
+        //std::cout<<mK<<std::endl;
+        for(size_t i = 0; i < mvKeys1.size(); i++) mvKeys1[i].pt = vPts1[i];
+        for(size_t i = 0; i < mvKeys2.size(); i++) mvKeys2[i].pt = vPts2[i];
+    }
+
     odom2 = CurrentFrame.odom;
-    CurrentFrame.Tbc.copyTo(Tbc);
     
     mvMatches12.clear();
     mvMatches12.reserve(mvKeys2.size());
@@ -189,7 +213,9 @@ bool Initializer::InitializeWithOdom(const Frame &CurrentFrame, const vector<int
             vAvailableIndices.pop_back();
         }
     }
+    //std::vector<bool> vbMatchesInliers(mvMatches12.size(),true);
 
+    //return ReconstructWithOdom(vbMatchesInliers,mK,R21,t21,vP3D,vbTriangulated,1.0,50);
     // Launch threads to compute in parallel a fundamental matrix and a homography
     vector<bool> vbMatchesInliersH, vbMatchesInliersF;
     float SH, SF;
@@ -201,12 +227,12 @@ bool Initializer::InitializeWithOdom(const Frame &CurrentFrame, const vector<int
     // Wait until both threads have finished
     threadH.join();
     threadF.join();
-
+    std::cout<<"H: "<<std::count(vbMatchesInliersH.begin(),vbMatchesInliersH.end(),true)<<std::endl;
+    std::cout<<"F: "<<std::count(vbMatchesInliersF.begin(),vbMatchesInliersF.end(),true)<<std::endl;
     // Compute ratio of scores
     float RH = SH/(SH+SF);
-    //std::cout << "mK: " << mK << std::endl;
     // Try to reconstruct from homography or fundamental depending on the ratio (0.40-0.45)
-    if(RH>0.40)
+    if(RH>0.5)
     {
         //return ReconstructH(vbMatchesInliersH,H,mK,R21,t21,vP3D,vbTriangulated,1.0,50);
         return ReconstructWithOdom(vbMatchesInliersH,mK,R21,t21,vP3D,vbTriangulated,1.0,50);
@@ -214,7 +240,7 @@ bool Initializer::InitializeWithOdom(const Frame &CurrentFrame, const vector<int
     else //if(pF_HF>0.6)
     {
         //return ReconstructF(vbMatchesInliersF,F,mK,R21,t21,vP3D,vbTriangulated,1.0,50);
-        return ReconstructWithOdom(vbMatchesInliersH,mK,R21,t21,vP3D,vbTriangulated,1.0,50);
+        return ReconstructWithOdom(vbMatchesInliersF,mK,R21,t21,vP3D,vbTriangulated,1.0,50);
     }
 
     return false;
@@ -841,7 +867,7 @@ bool Initializer::ReconstructWithOdom(vector<bool> &vbMatchesInliers, cv::Mat &K
     cv::Mat t1;
     g2o::SE2 odom21 = odom1 - odom2;
     //std::cout << "Tbc " <<  std::endl << Tbc << std::endl;
-    cv::Mat T1 = Tbc.inv() * odom21.toCvSE3() * Tbc;
+    cv::Mat T1 = Converter::invSE3(Tbc) * odom21.toCvSE3() * Tbc;
     R1 = T1.rowRange(0,3).colRange(0,3);
     t1 = T1.rowRange(0,3).col(3);
 
@@ -856,8 +882,8 @@ bool Initializer::ReconstructWithOdom(vector<bool> &vbMatchesInliers, cv::Mat &K
     t21 = cv::Mat();
 
     int nMinGood = max(static_cast<int>(0.7*N),minTriangulated);
-    //std::cout <<"nGood1: " << nGood1 << std::endl;
-    // std::cout << "nMinGood: " << nMinGood << std::endl;
+    std::cout <<"nGood1: " << nGood1 << std::endl;
+    std::cout << "nMinGood: " << nMinGood << std::endl;
     if(parallax1 > minParallax && nGood1 > nMinGood)
     {
         vP3D = vP3D1;
@@ -939,6 +965,12 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
                        const vector<Match> &vMatches12, vector<bool> &vbMatchesInliers,
                        const cv::Mat &K, vector<cv::Point3f> &vP3D, float th2, vector<bool> &vbGood, float &parallax)
 {
+    // Calibration parameters
+    const float fx = K.at<float>(0,0);
+    const float fy = K.at<float>(1,1);
+    const float cx = K.at<float>(0,2);
+    const float cy = K.at<float>(1,2);
+
     vbGood = vector<bool>(vKeys1.size(),false);
     vP3D.resize(vKeys1.size());
 
@@ -956,7 +988,7 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
     R.copyTo(P2.rowRange(0,3).colRange(0,3));
     t.copyTo(P2.rowRange(0,3).col(3));
     P2 = K*P2;
-
+    
     cv::Mat O2 = -R.t()*t;
 
     int nGood=0;
@@ -998,15 +1030,23 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
             continue;
 
         // Check reprojection error in first image
-        cv::Point2f uv1 = mpCamera->project(p3dC1);
-        float squareError1 = (uv1.x-kp1.pt.x)*(uv1.x-kp1.pt.x)+(uv1.y-kp1.pt.y)*(uv1.y-kp1.pt.y);
+        float im1x, im1y;
+        float invZ1 = 1.0/p3dC1.at<float>(2);
+        im1x = fx*p3dC1.at<float>(0)*invZ1+cx;
+        im1y = fy*p3dC1.at<float>(1)*invZ1+cy;
+
+        float squareError1 = (im1x-kp1.pt.x)*(im1x-kp1.pt.x)+(im1y-kp1.pt.y)*(im1y-kp1.pt.y);
 
         if(squareError1>th2)
             continue;
 
         // Check reprojection error in second image
-        cv::Point2f uv2 = mpCamera->project(p3dC2);
-        float squareError2 = (uv2.x-kp2.pt.x)*(uv2.x-kp2.pt.x)+(uv2.y-kp2.pt.y)*(uv2.y-kp2.pt.y);
+        float im2x, im2y;
+        float invZ2 = 1.0/p3dC2.at<float>(2);
+        im2x = fx*p3dC2.at<float>(0)*invZ2+cx;
+        im2y = fy*p3dC2.at<float>(1)*invZ2+cy;
+
+        float squareError2 = (im2x-kp2.pt.x)*(im2x-kp2.pt.x)+(im2y-kp2.pt.y)*(im2y-kp2.pt.y);
 
         if(squareError2>th2)
             continue;

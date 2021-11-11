@@ -37,6 +37,7 @@
 #include "MapDrawer.h"
 #include "System.h"
 #include "ImuTypes.h"
+#include "OdomTypes.h"
 
 #include "GeometricCamera.h"
 
@@ -168,6 +169,7 @@ public:
 
     bool mbWriteStats;
 
+    g2o::SE2 mOdom;
 protected:
 
     // Main tracking function. It is independent of the input sensor.
@@ -190,9 +192,10 @@ protected:
     bool PredictStateIMU();
 
     void PreintegrateOdom();               //OUR
-    bool TrackWithMotionModelOdom();//OUR
+    bool TrackWithMotionModelOdom(bool doNotTrackPnts = false);//OUR
     bool TrackReferenceKeyFrameOdom();//OUR
     int lastNewestChangedKeyFrameId = 0;//OUR
+    bool PredictStateOdom();            // OUR
 
     bool Relocalization();
 
@@ -233,6 +236,9 @@ protected:
 
     // Last Bias Estimation (at keyframe creation)
     IMU::Bias mLastBias;
+
+    // WOdometry from last frame
+    ODOM::Preintegrated* mpOdomPreintegratedFromLastKF;
 
     // In case of performing only localization, this flag is true when there are no matches to
     // points in the map. Still tracking will continue if there are enough matches with temporal points.
@@ -278,9 +284,7 @@ protected:
     cv::Mat mTcb;
     
     //Odometry Noise
-    float odom_x_noise;
-    float odom_y_noise;
-    float odom_theta_noise;
+    Vector3d mvOdomNoise;
 
     //Calibration matrix
     cv::Mat mK;

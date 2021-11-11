@@ -39,7 +39,9 @@ public:
 
     void DrawMapPoints();
     void DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph, const bool bDrawInertialGraph);
+    void DrawKeyFrames(std::vector<cv::Mat> Twci, std::vector<GLfloat>& color);
     void DrawCurrentCamera(pangolin::OpenGlMatrix &Twc);
+    void DrawCurrentCamera(pangolin::OpenGlMatrix &Twc,std::vector<GLfloat>& v);
     void SetCurrentCameraPose(const cv::Mat &Tcw);
     void SetReferenceKeyFrame(KeyFrame *pKF);
     void GetCurrentOpenGLCameraMatrix(pangolin::OpenGlMatrix &M, pangolin::OpenGlMatrix &MOw);

@@ -57,7 +57,7 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
     mBowVec(F.mBowVec), mFeatVec(F.mFeatVec), mnScaleLevels(F.mnScaleLevels), mfScaleFactor(F.mfScaleFactor),
     mfLogScaleFactor(F.mfLogScaleFactor), mvScaleFactors(F.mvScaleFactors), mvLevelSigma2(F.mvLevelSigma2),
     mvInvLevelSigma2(F.mvInvLevelSigma2), mnMinX(F.mnMinX), mnMinY(F.mnMinY), mnMaxX(F.mnMaxX),
-    mnMaxY(F.mnMaxY), mK(F.mK), mPrevKF(NULL), mNextKF(NULL), mpImuPreintegrated(F.mpImuPreintegrated),
+    mnMaxY(F.mnMaxY), mK(F.mK), mPrevKF(NULL), mNextKF(NULL), mpImuPreintegrated(F.mpImuPreintegrated),mpOdomPreintegrated(F.mpOdomPreintegrated),
     mImuCalib(F.mImuCalib), mvpMapPoints(F.mvpMapPoints), mpKeyFrameDB(pKFDB),
     mpORBvocabulary(F.mpORBvocabulary), mbFirstConnection(true), mpParent(NULL), mDistCoef(F.mDistCoef), mbNotErase(false), mnDataset(F.mnDataset),
     mbToBeErased(false), mbBad(false), mHalfBaseline(F.mb/2), mpMap(pMap), mbCurrentPlaceRecognition(false), mNameFile(F.mNameFile), mbHasHessian(false), mnMergeCorrectedForKF(0),
@@ -73,6 +73,7 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
 
         odom = F.odom;
         F.Tbc.copyTo(Tbc);
+        F.Tcb.copyTo(Tcb);
 #endif
     imgLeft = F.imgLeft.clone();
     imgRight = F.imgRight.clone();
@@ -192,6 +193,12 @@ cv::Mat KeyFrame::GetImuPose()
     return Twc*mImuCalib.Tcb;
 }
 
+cv::Mat KeyFrame::GetOdomPose()
+{
+    unique_lock<mutex> lock(mMutexPose);
+    return Tbc*Twc*Tcb;
+}
+
 cv::Mat KeyFrame::GetRotation()
 {
     unique_lock<mutex> lock(mMutexPose);
@@ -238,6 +245,8 @@ void KeyFrame::UpdateBestCovisibles()
     list<int> lWs;
     for(size_t i=0, iend=vPairs.size(); i<iend;i++)
     {
+        if(!(vPairs[i].second))
+            continue;
         if(!vPairs[i].second->isBad())
         {
             lKFs.push_front(vPairs[i].second);
@@ -468,8 +477,8 @@ void KeyFrame::UpdateConnections(bool upParent)
             nmax=mit->second;
             pKFmax=mit->first;
         }
-        bool temp = false;
 #ifdef ODOM
+        bool temp = false;
         if(mpLastKF)
             temp = mit->first->mnId == mpLastKF->mnId;
 #endif
@@ -488,6 +497,7 @@ void KeyFrame::UpdateConnections(bool upParent)
         {
             vPairs.push_back(make_pair(nmax,pKFmax));
             pKFmax->AddConnection(this,nmax);
+            cout << "Empty pair" << endl;
         }
     }
 
@@ -673,16 +683,18 @@ void KeyFrame::SetBadFlag()
     {
         KeyFrame* other = mit->first;
         other->EraseConnection(this);
-#ifdef ODOM
-        if(other->mnId == 0)
-            continue;
-        if(other->mpLastKF->mnId == mnId)
-        {
-            other->mpLastKF = mpLastKF;
-            other->AddConnection(mpLastKF, other->GetWeight(mpLastKF));
-            mpLastKF->AddConnection(other, mpLastKF->GetWeight(other));
-        }
-#endif
+// #ifdef ODOM
+//         if(other->mnId == 0)
+//             continue;
+//         if(!(other->mpLastKF)) //Vuong EDIT
+//             continue;
+//         if(other->mpLastKF->mnId == mnId)
+//         {
+//             other->mpLastKF = mpLastKF;
+//             other->AddConnection(mpLastKF, other->GetWeight(mpLastKF));
+//             mpLastKF->AddConnection(other, mpLastKF->GetWeight(other));
+//         }
+// #endif
     }
     //std::cout << "KF.BADFLAG-> Connection erased..." << std::endl;
 
@@ -911,7 +923,9 @@ float KeyFrame::ComputeSceneMedianDepth(const int q)
     }
 
     sort(vDepths.begin(),vDepths.end());
-
+    if(vDepths.empty())
+        return 0.0f;
+    //std::cout<<vDepths.size() << ' '<<vDepths.empty()<<std::endl;
     return vDepths[(vDepths.size()-1)/q];
 }
 

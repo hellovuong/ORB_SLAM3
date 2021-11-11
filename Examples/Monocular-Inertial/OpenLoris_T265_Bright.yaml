@@ -1,0 +1,84 @@
+%YAML:1.0
+
+#--------------------------------------------------------------------------------------------
+# Camera Parameters. Adjust them!
+#--------------------------------------------------------------------------------------------
+Camera.type: "KannalaBrandt8"
+
+# Left Camera calibration and distortion parameters (OpenCV)
+Camera.fx: 2.8498089599609375e+02
+Camera.fy: 2.8610238647460938e+02
+Camera.cx: 4.2524438476562500e+02
+Camera.cy: 3.9846759033203125e+02
+
+# Kannala-Brandt distortion parameters
+Camera.k1: -7.3047108016908169e-03
+Camera.k2: 4.3499931693077087e-02
+Camera.k3: -4.1283041238784790e-02
+Camera.k4: 7.6524601317942142e-03
+
+
+# Lapping area between images
+Camera.lappingBegin: 0
+Camera.lappingEnd: 848
+
+# Camera resolution
+Camera.width: 848
+Camera.height: 800
+
+# Camera frames per second 
+Camera.fps: 30.0
+
+# Color order of the images (0: BGR, 1: RGB. It is ignored if images are grayscale)
+Camera.RGB: 1
+
+# Transformation from body-frame (imu) to camera
+# Extrinsic from "Accel"	  To	  "Fisheye 1"
+Tbc: !!opencv-matrix
+   rows: 4
+   cols: 4
+   dt: f
+   data: [-0.99993,         -0.00786421,       0.00882587, 0.0106999985873699,    
+          0.00790399,         -0.999959,       0.00448144, -1.45519152283669e-11,
+          0.00879027,        0.00455089,       0.999951 , 2.18278728425503e-11,
+          0.0, 0.0, 0.0, 1.0]
+
+IMU.NoiseGyro: 0.054285309  #5.1480301408446394e-06 #(T265_1hour_square_root) 2.2689e-03 #2.9399585994142933e-03 (T265_1hour) #0.055335   (D455_1hour) #3.0619389333450590e-03   
+IMU.NoiseAcc:  0.141662077  #6.6952452471014112e-05 #(T265_1hour_square_root) 8.1824e-03 #1.8944022044921720e-02 (T265_1hour) #0.1571     (D455_1hour) #2.4688952269151677e-02   
+IMU.GyroWalk:  0.003569594  #4.9999999873762135e-07 #(T265_1hour_square_root) 7.0711e-04 #2.1075650081844720e-05 (T265_1hour) #4.0700e-03 (D455_1hour) #1.6565292353593328e-05   
+IMU.AccWalk:   0.023492717  #9.9999997473787516e-05 #(T265_1hour_square_root) 1.0000e-02 #6.9885217893000603e-04 (T265_1hour) #0.022981   (D455_1hour) #5.2813197466286793e-04    
+IMU.Frequency: 200
+#--------------------------------------------------------------------------------------------
+# ORB Parameters
+#--------------------------------------------------------------------------------------------
+
+# ORB Extractor: Number of features per image
+ORBextractor.nFeatures: 2000
+
+# ORB Extractor: Scale factor between levels in the scale pyramid
+ORBextractor.scaleFactor: 1.2
+
+# ORB Extractor: Number of levels in the scale pyramid
+ORBextractor.nLevels: 8
+
+
+# ORB Extractor: Fast threshold
+# Image is divided in a grid. At each cell FAST are extracted imposing a minimum response.
+# Firstly we impose iniThFAST. If no corners are detected we impose a lower value minThFAST
+# You can lower these values if your images have low contrast
+ORBextractor.iniThFAST: 60  #OpenLoris-Corridor 2-3-4 
+ORBextractor.minThFAST: 20  #OpenLoris-Corridor 2-3-4
+
+#--------------------------------------------------------------------------------------------
+# Viewer Parameters
+#--------------------------------------------------------------------------------------------
+Viewer.KeyFrameSize: 0.05
+Viewer.KeyFrameLineWidth: 1
+Viewer.GraphLineWidth: 0.9
+Viewer.PointSize: 2
+Viewer.CameraSize: 0.08
+Viewer.CameraLineWidth: 3
+Viewer.ViewpointX: 0
+Viewer.ViewpointY: -0.7
+Viewer.ViewpointZ: -3.5 # -1.8
+Viewer.ViewpointF: 500

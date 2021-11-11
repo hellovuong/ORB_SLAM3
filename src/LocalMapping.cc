@@ -152,7 +152,8 @@ void LocalMapping::Run()
                     {
                         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
                         if(mbOdom)
-                            Optimizer::LocalBundleAdjustmentSE2(mpCurrentKeyFrame,&mbAbortBA, mpCurrentKeyFrame->GetMap(),num_FixedKF_BA);
+                            // Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame,&mbAbortBA, mpCurrentKeyFrame->GetMap(),num_FixedKF_BA);
+                            Optimizer::LocalOdomBA(mpCurrentKeyFrame,&mbAbortBA, mpCurrentKeyFrame->GetMap(),num_FixedKF_BA);
                         else    
                             Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame,&mbAbortBA, mpCurrentKeyFrame->GetMap(),num_FixedKF_BA);     
                         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
@@ -448,7 +449,8 @@ void LocalMapping::CreateNewMapPoints()
         }
         else
         {
-            const float medianDepthKF2 = pKF2->ComputeSceneMedianDepth(2);
+            float medianDepthKF2Temp = pKF2->ComputeSceneMedianDepth(2);
+            const float medianDepthKF2 = medianDepthKF2Temp;
             const float ratioBaselineDepth = baseline/medianDepthKF2;
 
             if(ratioBaselineDepth<0.01)
@@ -1074,6 +1076,31 @@ void LocalMapping::KeyFrameCulling()
                         pKF->mNextKF = NULL;
                         pKF->mPrevKF = NULL;
                         pKF->SetBadFlag();
+                    }
+                }
+            }
+            else if(mbOdom)
+            {
+                if (mpAtlas->KeyFramesInMap()<=Nd)
+                    continue;
+
+                if(pKF->mnId>(mpCurrentKeyFrame->mnId-2))
+                    continue;
+                
+                if(pKF->mPrevKF && pKF->mNextKF)
+                {
+                    const float t = pKF->mNextKF->mTimeStamp-pKF->mPrevKF->mTimeStamp;
+                    g2o::SE2 dOdom = pKF->odom - pKF->mPrevKF->odom;
+                    cv::Mat Tcc = pKF->Tbc.inv() * dOdom.toCvSE3() * pKF->Tbc;
+                    cv::Mat xy = Tcc.rowRange(0,2).col(3);
+                    if(t < 3 && (cv::norm(xy) > 0.02f || fabs(dOdom.rotation().angle() < 1.*3.1415926/180)))
+                    {
+                        pKF->mNextKF->mpOdomPreintegrated->MergePrevious(pKF->mpOdomPreintegrated);
+                        pKF->mNextKF->mPrevKF = pKF->mPrevKF;
+                        pKF->mPrevKF->mNextKF = pKF->mNextKF;
+                        pKF->mNextKF = NULL;
+                        pKF->mPrevKF = NULL;
+                        pKF->SetBadFlag();   
                     }
                 }
             }

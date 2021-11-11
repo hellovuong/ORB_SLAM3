@@ -133,7 +133,6 @@ int main(int argc, char **argv)
     cout << "mean tracking time: " << totaltime/nImages << endl;
 
     // Save camera trajectory
-    //SLAM.SavePoseKeyFrameTrajectoryTUM("KeyFrameTrajectory_body.txt");   
     if(bfilename)
         SLAM.SaveKeyFrameTrajectoryTUM("kf_" + string(argv[argc-1]) + ".txt"); 
     else
@@ -144,8 +143,11 @@ int main(int argc, char **argv)
 void LoadImages(const string &strPathToSequence, vector<string> &vstrImageFilenames, vector<double> &vTimestamps)
 {
     ifstream fTimes;
-    string strPathTimeFile = strPathToSequence + "/times.txt";
-    fTimes.open(strPathTimeFile.c_str());
+    
+    string strPathLeft = strPathToSequence + "/fisheye1.txt";
+    fTimes.open(strPathLeft.c_str());
+    vTimestamps.reserve(5000);
+    vstrImageFilenames.reserve(5000);
     while(!fTimes.eof())
     {
         string s;
@@ -155,18 +157,12 @@ void LoadImages(const string &strPathToSequence, vector<string> &vstrImageFilena
             stringstream ss;
             ss << s;
             double t;
+            string sRGB;
             ss >> t;
             vTimestamps.push_back(t);
+            ss >> sRGB;
+            vstrImageFilenames.push_back(strPathToSequence + "/" + sRGB);
         }
     }
-
-    string strPrefixLeft = strPathToSequence + "/color/";
-
-    const int nTimes = vTimestamps.size();
-    vstrImageFilenames.resize(nTimes);
-
-    for(int i=0; i<nTimes; i++)
-    {
-        vstrImageFilenames[i] = strPrefixLeft + std::to_string(vTimestamps[i]) + ".png";
-    }
+    fTimes.close();
 }

@@ -55,8 +55,8 @@ public:
                                        const unsigned long nLoopKF=0, const bool bRobust = true);
     
     void static LocalBundleAdjustmentSE2(KeyFrame* pKF, bool *pbStopFlag, Map *pMap, int& num_fixedKF);
-    void static LocalBundleAdjustmentSE2_odom(KeyFrame* pKF, bool *pbStopFlag, Map *pMap, int& num_fixedKF);
-    
+    void static LocalOdomBA(KeyFrame* pKF, bool *pbStopFlag, Map *pMap, int& num_fixedKF);
+    // Local BA in welding area when two maps are merged
     int static PoseOptimizationSE2(Frame* pFrame);    
 
     // SE3 Optimization Functions
