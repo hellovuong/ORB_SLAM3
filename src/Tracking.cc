@@ -2839,6 +2839,7 @@ bool Tracking::TrackWithMotionModel()
     {
         PredictStateOdom();
         return true;
+        // mCurrentFrame.SetPose(mVelocity*mLastFrame.mTcw);
     }
     else
     {

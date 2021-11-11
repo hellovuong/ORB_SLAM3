@@ -3442,6 +3442,14 @@ void Optimizer::LocalOdomBA(KeyFrame* pKF, bool *pbStopFlag, Map *pMap, int& num
         veo[i]->setMeasurement(pKFi->mpOdomPreintegrated->meas);
         veo[i]->setInformation(pKFi->mpOdomPreintegrated->cov.inverse()); // check->correct
 
+        if(i==N-2)
+        {
+            g2o::RobustKernelHuber* rki = new g2o::RobustKernelHuber;
+            rki->setDelta(sqrt(16.92));
+            veo[i]->setRobustKernel(rki);
+            veo[i]->setInformation(veo[i]->information()*1e-2);
+        }
+
         if(optimizer.vertex(pKFi->mnId) == NULL || optimizer.vertex(pKFiPrev->mnId) == NULL)
                 continue;
         optimizer.addEdge(veo[i]);

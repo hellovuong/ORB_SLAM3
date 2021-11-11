@@ -159,6 +159,100 @@ void MapDrawer::DrawMapPoints()
     glEnd();
 }
 
+void MapDrawer::DrawKeyFrames(std::vector<cv::Mat> Twci, std::vector<GLfloat>& color)
+{
+    const float &w = mKeyFrameSize;
+    const float h = w*0.75;
+    const float z = w*0.6;
+
+    //const vector<KeyFrame*> vpKFs = mpAtlas->GetAllKeyFrames();
+
+    if(true)
+    {
+        for(size_t i=0; i<Twci.size(); i++)
+        {
+            //KeyFrame* pKF = vpKFs[i];
+            cv::Mat Twc = Twci[i].t();
+            //unsigned int index_color = pKF->mnOriginMapId;
+
+            glPushMatrix();
+
+            glMultMatrixf(Twc.ptr<GLfloat>(0));
+
+            if(i==0) // It is the first KF in the map
+            {
+                glLineWidth(mKeyFrameLineWidth*5);
+                glColor3f(color[0],color[1],color[2]);
+                glBegin(GL_LINES);
+
+                //cout << "Initial KF: " << mpAtlas->GetCurrentMap()->GetOriginKF()->mnId << endl;
+                //cout << "Parent KF: " << vpKFs[i]->mnId << endl;
+            }
+            else
+            {
+                glLineWidth(mKeyFrameLineWidth);
+                glColor3f(color[0],color[1],color[2]);
+                //glColor3f(mfFrameColors[index_color][0],mfFrameColors[index_color][1],mfFrameColors[index_color][2]);
+                glBegin(GL_LINES);
+            }
+
+            glVertex3f(0,0,0);
+            glVertex3f(w,h,z);
+            glVertex3f(0,0,0);
+            glVertex3f(w,-h,z);
+            glVertex3f(0,0,0);
+            glVertex3f(-w,-h,z);
+            glVertex3f(0,0,0);
+            glVertex3f(-w,h,z);
+
+            glVertex3f(w,h,z);
+            glVertex3f(w,-h,z);
+
+            glVertex3f(-w,h,z);
+            glVertex3f(-w,-h,z);
+
+            glVertex3f(-w,h,z);
+            glVertex3f(w,h,z);
+
+            glVertex3f(-w,-h,z);
+            glVertex3f(w,-h,z);
+            glEnd();
+
+            glPopMatrix();
+
+            //Draw lines with Loop and Merge candidates
+            /*glLineWidth(mGraphLineWidth);
+            glColor4f(1.0f,0.6f,0.0f,1.0f);
+            glBegin(GL_LINES);
+            cv::Mat Ow = pKF->GetCameraCenter();
+            const vector<KeyFrame*> vpLoopCandKFs = pKF->mvpLoopCandKFs;
+            if(!vpLoopCandKFs.empty())
+            {
+                for(vector<KeyFrame*>::const_iterator vit=vpLoopCandKFs.begin(), vend=vpLoopCandKFs.end(); vit!=vend; vit++)
+                {
+                    cv::Mat Ow2 = (*vit)->GetCameraCenter();
+                    glVertex3f(Ow.at<float>(0),Ow.at<float>(1),Ow.at<float>(2));
+                    glVertex3f(Ow2.at<float>(0),Ow2.at<float>(1),Ow2.at<float>(2));
+                }
+            }
+            const vector<KeyFrame*> vpMergeCandKFs = pKF->mvpMergeCandKFs;
+            if(!vpMergeCandKFs.empty())
+            {
+                for(vector<KeyFrame*>::const_iterator vit=vpMergeCandKFs.begin(), vend=vpMergeCandKFs.end(); vit!=vend; vit++)
+                {
+                    cv::Mat Ow2 = (*vit)->GetCameraCenter();
+                    glVertex3f(Ow.at<float>(0),Ow.at<float>(1),Ow.at<float>(2));
+                    glVertex3f(Ow2.at<float>(0),Ow2.at<float>(1),Ow2.at<float>(2));
+                }
+            }*/
+
+            glEnd();
+        }
+    }
+
+    
+}
+
 void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph, const bool bDrawInertialGraph)
 {
     const float &w = mKeyFrameSize;
@@ -249,6 +343,7 @@ void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph, const b
             glEnd();
         }
     }
+    
 
     if(bDrawGraph)
     {
@@ -400,6 +495,48 @@ void MapDrawer::DrawCurrentCamera(pangolin::OpenGlMatrix &Twc)
 
     glLineWidth(mCameraLineWidth);
     glColor3f(0.0f,1.0f,0.0f);
+    glBegin(GL_LINES);
+    glVertex3f(0,0,0);
+    glVertex3f(w,h,z);
+    glVertex3f(0,0,0);
+    glVertex3f(w,-h,z);
+    glVertex3f(0,0,0);
+    glVertex3f(-w,-h,z);
+    glVertex3f(0,0,0);
+    glVertex3f(-w,h,z);
+
+    glVertex3f(w,h,z);
+    glVertex3f(w,-h,z);
+
+    glVertex3f(-w,h,z);
+    glVertex3f(-w,-h,z);
+
+    glVertex3f(-w,h,z);
+    glVertex3f(w,h,z);
+
+    glVertex3f(-w,-h,z);
+    glVertex3f(w,-h,z);
+    glEnd();
+
+    glPopMatrix();
+}
+
+void MapDrawer::DrawCurrentCamera(pangolin::OpenGlMatrix &Twc,std::vector<GLfloat>& color)
+{
+    const float &w = mCameraSize;
+    const float h = w*0.75;
+    const float z = w*0.6;
+
+    glPushMatrix();
+
+#ifdef HAVE_GLES
+        glMultMatrixf(Twc.m);
+#else
+        glMultMatrixd(Twc.m);
+#endif
+
+    glLineWidth(mCameraLineWidth);
+    glColor3f(color[0],color[1],color[2]);
     glBegin(GL_LINES);
     glVertex3f(0,0,0);
     glVertex3f(w,h,z);

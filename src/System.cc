@@ -663,7 +663,7 @@ void System::SaveBodyTrajectoryTUM(const string &filename)
         cv::Mat R = Tw0b.rowRange(0,3).colRange(0,3);
         vector<float> q = Converter::toQuaternion(R);
         cv::Mat t = Tw0b.rowRange(0,3).col(3);
-        f << setprecision(6) << pKF->mTimeStamp << setprecision(7) << " " << t.at<float>(0) << " " << t.at<float>(1) << " " << t.at<float>(2)
+        f << setprecision(6) << *lT << setprecision(7) << " " << t.at<float>(0) << " " << t.at<float>(1) << " " << t.at<float>(2)
             << " " << q[0] << " " << q[1] << " " << q[2] << " " << q[3] << endl;
 
     }

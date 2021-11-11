@@ -166,8 +166,9 @@ void Viewer::Run()
             .SetBounds(0.0, 1.0, pangolin::Attach::Pix(175), 1.0, -1024.0f/768.0f)
             .SetHandler(new pangolin::Handler3D(s_cam));
 
-    pangolin::OpenGlMatrix Twc, Twr;
+    pangolin::OpenGlMatrix Twc, Twr,Twc1;
     Twc.SetIdentity();
+    Twc1.SetIdentity();
     pangolin::OpenGlMatrix Ow; // Oriented with g in the z axis
     Ow.SetIdentity();
     pangolin::OpenGlMatrix Twwp; // Oriented with g in the z axis, but y and x from camera
@@ -189,6 +190,8 @@ void Viewer::Run()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         mpMapDrawer->GetCurrentOpenGLCameraMatrix(Twc,Ow,Twwp);
+        Twc1 = Twc;
+        Twc1.m[12] = Twc1.m[12]+0.5;
 
         if(mbStopTrack)
         {
@@ -284,8 +287,10 @@ void Viewer::Run()
         d_cam.Activate(s_cam);
         glClearColor(1.0f,1.0f,1.0f,1.0f);
         mpMapDrawer->DrawCurrentCamera(Twc);
-        if(menuShowKeyFrames || menuShowGraph || menuShowInertialGraph)
+        // mpMapDrawer->DrawCurrentCamera(Twc1);
+        if(menuShowKeyFrames || menuShowGraph || menuShowInertialGraph){
             mpMapDrawer->DrawKeyFrames(menuShowKeyFrames,menuShowGraph, menuShowInertialGraph);
+        }
         if(menuShowPoints)
             mpMapDrawer->DrawMapPoints();
 
@@ -301,7 +306,7 @@ void Viewer::Run()
         else{
             toShow = im;
         }
-
+        cv::resize(toShow,toShow,cv::Size(480,480),cv::INTER_LINEAR);
         cv::imshow("ORB-SLAM3: Current Frame",toShow);
         cv::waitKey(mT);
 

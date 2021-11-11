@@ -172,7 +172,8 @@ int main(int argc, char **argv)
     if(bFileName)
     {
         SLAM.SaveBodyKeyFrameTrajectoryTUM("kf_body_" + file_name + ".txt");
-        SLAM.SaveBodyTrajectoryTUM("f_body_" + file_name + ".txt"); 
+        SLAM.SaveBodyTrajectoryTUM("f_body_" + file_name + ".txt");
+        SLAM.SaveTrajectoryTUM("f_" + file_name + ".txt"); 
         SLAM.SaveKeyFrameTrajectoryTUM("kf_cam_" + file_name + ".txt");
         cout << "trajectory saved!" << endl;
     }
